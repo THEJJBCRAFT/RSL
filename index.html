@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JARO & DELTA</title>
+  <meta name="description" content="JARO & DELTA cinematic website intro mit Redstone Labs, CC3 Loading und Shader-Effekten.">
+  <meta name="theme-color" content="#05070b">
+  <link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+  <canvas id="shaderCanvas" aria-hidden="true"></canvas>
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="cursor-light" id="cursorLight" aria-hidden="true"></div>
+
+  <main class="experience">
+    <section class="intro-stage is-active" id="redstoneStage" aria-label="Redstone Labs Intro">
+      <div class="circuit-field" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="redstone-logo">
+        <img class="brand-logo intro-logo" src="assets/img/redstone-labs-logo-main.png" alt="Redstone Labs Logo">
+        <div class="logo-kicker">System Boot 01</div>
+        <h1>REDSTONE LABS</h1>
+        <p>Signal wird geladen. Energiepfade werden synchronisiert.</p>
+      </div>
+      <div class="stage-progress">
+        <span>Redstone Labs Logo Animation</span>
+        <div><i id="redstoneProgress"></i></div>
+        <strong>10s</strong>
+      </div>
+    </section>
+
+    <section class="intro-stage" id="cc3Stage" aria-label="CC3 Loading">
+      <div class="cc3-loader" aria-hidden="true">
+        <div class="ring ring-a"></div>
+        <div class="ring ring-b"></div>
+        <div class="ring ring-c"></div>
+        <div class="cc3-core">CC3</div>
+      </div>
+      <div class="loading-copy">
+        <div class="logo-kicker">Content Cr3w Core</div>
+        <h2>CC3 Loading</h2>
+        <p>Shader, Sound-Layer, Channel-Pulse und Delta-Signatur werden vorbereitet.</p>
+      </div>
+      <div class="load-dots" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    </section>
+
+    <section class="intro-stage final-stage" id="finalStage" aria-label="JARO und DELTA">
+      <div class="final-logo">
+        <div class="logo-kicker">Main Signal Online</div>
+        <h2>JARO <span>&amp;</span> DELTA</h2>
+        <p>Gaming, Redstone, Story, Musik und Projekte in einem neuen System.</p>
+      </div>
+      <div class="enter-actions">
+        <a href="#home" class="enter-button" id="enterButton">Eintreten</a>
+        <button id="replayButton" type="button">Intro nochmal</button>
+      </div>
+    </section>
+
+    <section class="site-shell" id="home" aria-label="JARO und DELTA Website">
+      <nav class="site-nav">
+        <a href="#home" class="wordmark">JARO &amp; DELTA</a>
+        <div>
+          <a href="#signal">Signal</a>
+          <a href="#projekte">Projekte</a>
+          <a href="#labs">Labs</a>
+          <a href="categories/redstone-labs/library/index.html">RSL Mods &amp; Plugins</a>
+          <a href="#impressum">Impressum</a>
+          <a href="#datenschutz">Datenschutz</a>
+        </div>
+      </nav>
+
+      <header class="hero">
+        <div class="hero-copy">
+          <span class="logo-kicker">JARO & DELTA Mainframe</span>
+          <h2><span class="hero-title-small">CC3</span> und <span class="red-word">REDSTONE LABS</span></h2>
+          <p class="union-line">ZUSAMMEN VEREINT SIND WIR UNBESIEGBAR</p>
+          <p>Erst Logo-Intro, dann CC3-Ladephase, dann ein harter Fade in die Welt von JARO & DELTA. Der Hintergrund ist kein Bild: Er ist ein laufender Shader-Canvas.</p>
+          <div class="hero-actions">
+            <a href="#projekte" class="enter-button">Projekte ansehen</a>
+            <button id="skipIntroButton" type="button">Intro starten</button>
+          </div>
+        </div>
+        <div class="signal-panel" id="signal">
+          <div class="signal-row"><span>Redstone Labs</span><strong>ONLINE</strong></div>
+          <div class="signal-row"><span>CC3 Loader</span><strong>READY</strong></div>
+          <div class="signal-row"><span>JARO & DELTA</span><strong>LIVE</strong></div>
+          <div class="equalizer" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+      </header>
+
+      <section class="project-band" id="projekte">
+        <a class="project-card content-card" href="categories/contentcr3w/index.html">
+          <img class="mini-logo-image content-logo-image" src="assets/img/contentcr3w-logo.png" alt="CONTENTCR3W Logo">
+          <span>01</span>
+          <h3>CONTENTCR3W</h3>
+          <p>THE CONTENTCR3W mit DELTA, JARO, CHAOSCINDERS und cjulfy. Shorts und Videos vom YouTube-Kanal.</p>
+        </a>
+        <a class="project-card redstone-card" href="categories/redstone-labs/index.html">
+          <img class="mini-logo-image" src="assets/img/rsl_logo.png" alt="RSL Logo">
+          <span>02</span>
+          <h3>Redstone Labs</h3>
+          <p>Maschinen, Commands, Datapacks, Mods, Downloads, Experimente und geheime Laborbereiche.</p>
+        </a>
+        <a class="project-card" href="categories/cc3-music/index.html">
+          <img class="mini-logo-image" src="assets/img/cc3-icon.png" alt="CC3 Music Logo">
+          <span>03</span>
+          <h3>CC3 Music</h3>
+          <p>High-Shading-Player, eigene Playlists, Song-Bibliothek und Admin-Upload.</p>
+        </a>
+      </section>
+
+      <section class="labs-band" id="labs">
+        <div>
+          <span class="logo-kicker">Live Hub</span>
+          <h2>CONTENTCR3W zeigt echte YouTube-Uploads, Redstone Labs liefert Tools, CC3 Music spielt deine Songs.</h2>
+          <div class="hub-actions">
+            <a class="enter-button" href="categories/contentcr3w/index.html">Content Hub</a>
+            <a class="enter-button" href="categories/redstone-labs/online-tools/index.html">Online Tools</a>
+            <a class="enter-button" href="categories/redstone-labs/library/index.html">RSL Mods &amp; Plugins</a>
+            <a class="enter-button" href="categories/redstone-labs/index.html#server">Server 24/7</a>
+            <a class="enter-button" href="categories/cc3-music/index.html">Music Player</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="status-band" id="status">
+        <article>
+          <span>LIVE</span>
+          <h3>YouTube Feed</h3>
+          <p>Die CONTENTCR3W-Seite laedt die neuesten Uploads von JARO, DELTA, CHAOSCINDERS und cjulfy ueber den lokalen Server.</p>
+        </article>
+        <article>
+          <span>TOOLS</span>
+          <h3>Redstone Labs</h3>
+          <p>Datapack Timeline Studio und Minecraft Command Stacker sind direkt als Online-Tools erreichbar.</p>
+        </article>
+        <article>
+          <span>MUSIC</span>
+          <h3>CC3 Music</h3>
+          <p>Lokale Musikplattform mit Upload, Coverbildern, Playlist, Admin-Seite und schwebendem Player.</p>
+        </article>
+      </section>
+
+      <section class="legal-band" id="impressum">
+        <div class="legal-heading">
+          <span class="logo-kicker">Legal Core</span>
+          <h2>Episches Impressum</h2>
+        </div>
+        <div class="legal-grid">
+          <article>
+            <h3>JARO & DELTA / CC3 / Redstone Labs</h3>
+            <p>Projektseite fuer CONTENTCR3W, Redstone Labs und CC3 Music. Betreiberangaben werden vor einer oeffentlichen Veroeffentlichung final eingetragen.</p>
+          </article>
+          <article>
+            <h3>Kontakt</h3>
+            <p>Projekt: JARO & DELTA Website<br>Bereiche: CONTENTCR3W, Redstone Labs, CC3 Music<br>Status: Lokaler Aufbau und Testbetrieb</p>
+          </article>
+          <article>
+            <h3>Hinweis</h3>
+            <p>Vor Upload ins Internet muessen echte Kontaktdaten, Verantwortliche und rechtliche Pflichtangaben ergaenzt und geprueft werden.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="legal-band privacy" id="datenschutz">
+        <div class="legal-heading">
+          <span class="logo-kicker">Privacy Shield</span>
+          <h2>Datenschutzerklaerung</h2>
+        </div>
+        <div class="legal-grid">
+          <article>
+            <h3>Grundidee</h3>
+            <p>Die Website laeuft lokal ueber einen Node-Server. CC3 Music speichert hochgeladene Songs, Coverbilder und Track-Daten lokal im Projektordner.</p>
+          </article>
+          <article>
+            <h3>Uploads</h3>
+            <p>Musik-Uploads und Coverbilder werden nur lokal verarbeitet. Der Admin-Bereich ist fuer privaten Projektbetrieb gedacht.</p>
+          </article>
+          <article>
+            <h3>Externe Inhalte</h3>
+            <p>CONTENTCR3W ruft YouTube-Feeds der vier Crew-Kanaele ab und verlinkt auf YouTube. Es werden keine Analytics-Dienste eingebunden.</p>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <button class="skip-button" id="globalSkip" type="button">Skip</button>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

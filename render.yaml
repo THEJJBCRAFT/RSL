@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: jaro-delta-site
+    env: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+

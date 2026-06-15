@@ -1,0 +1,14 @@
+{
+  "name": "jaro-delta-site",
+  "version": "0.2.0",
+  "private": true,
+  "description": "JARO & DELTA Website mit CC3 Music Plattform.",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js"
+  }
+}
