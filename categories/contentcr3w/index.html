@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THE CONTENTCR3W - JARO & DELTA</title>
+  <meta name="description" content="THE CONTENTCR3W mit DELTA, JARO, CHAOSCINDERS und cjulfy. Aktuelle Videos, Shorts und Kanalbereich.">
+  <meta name="theme-color" content="#05070b">
+  <link rel="icon" type="image/png" href="../../assets/img/contentcr3w-logo.png">
+  <link rel="apple-touch-icon" href="../../assets/img/contentcr3w-logo.png">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+</head>
+<body class="contentcr3w-page">
+  <canvas id="shaderCanvas" aria-hidden="true"></canvas>
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <main class="crew-shell">
+    <nav class="site-nav crew-nav">
+      <a href="../../index.html#projekte" class="wordmark">JARO & DELTA</a>
+      <div>
+        <a href="../../index.html">Start</a>
+        <a href="#events">Events</a>
+        <a href="#servers">Server</a>
+        <a href="#updates">Updates</a>
+        <a href="#shop">Shop</a>
+        <a href="#beyond-life">Beyond Life</a>
+        <a href="#shorts">Shorts</a>
+      </div>
+    </nav>
+
+    <header class="crew-hero">
+      <div class="crew-title">
+        <img class="crew-logo" src="../../assets/img/contentcr3w-logo.png" alt="CONTENTCR3W Logo">
+        <span class="logo-kicker">CC3 Channel Hub</span>
+        <h1>THE CONTENTCR3W</h1>
+        <p>Dabei sind <strong>DELTA</strong>, <strong>JARO</strong>, <strong>CHAOSCINDERS</strong> und <strong>cjulfy</strong>. Hier landen aktuelle Videos vom YouTube-Kanal, getrennt nach Shorts und normalen Videos.</p>
+      </div>
+      <div class="crew-members" id="crew">
+        <a href="https://www.youtube.com/@deltajoelplay" target="_blank" rel="noreferrer"><span>01</span><strong>DELTA</strong></a>
+        <a href="https://www.youtube.com/@jaro-JJB" target="_blank" rel="noreferrer"><span>02</span><strong>JARO</strong></a>
+        <a href="https://www.youtube.com/@ChaosCinders" target="_blank" rel="noreferrer"><span>03</span><strong>CHAOSCINDERS</strong></a>
+        <a href="https://www.youtube.com/@Cjulfy" target="_blank" rel="noreferrer"><span>04</span><strong>cjulfy</strong></a>
+      </div>
+    </header>
+
+    <section class="crew-status-grid" aria-label="CONTENTCR3W Status">
+      <article>
+        <span class="status-pill">NEXT EVENT</span>
+        <h3 id="nextEventTitle">Events werden geladen...</h3>
+        <p id="nextEventMeta">Kalender-Signal wird synchronisiert.</p>
+      </article>
+      <article>
+        <span class="status-pill">SERVER STATUS</span>
+        <h3 id="serverStatusTitle">Server werden geladen...</h3>
+        <p id="serverStatusMeta">Status-Konsole startet.</p>
+      </article>
+      <article>
+        <span class="status-pill">LATEST UPDATE</span>
+        <h3 id="latestUpdateTitle">Updates werden geladen...</h3>
+        <p id="latestUpdateMeta">Patch-Feed wird gelesen.</p>
+      </article>
+    </section>
+
+    <section class="hub-section" id="events">
+      <div class="video-heading">
+        <span class="logo-kicker">CONTENTCR3W Ops</span>
+        <h2>Kommende Events</h2>
+        <p>Geplante Crew-Abende, Minecraft-Sessions, Community-Momente und Aufnahmefenster.</p>
+      </div>
+      <div class="hub-card-grid" id="eventsGrid"></div>
+    </section>
+
+    <section class="hub-section" id="servers">
+      <div class="video-heading">
+        <span class="logo-kicker">Server Console</span>
+        <h2>Server</h2>
+        <p>Status fuer Projektserver, Testwelten und spaetere Community-Systeme.</p>
+      </div>
+      <div class="hub-card-grid server-grid" id="serversGrid"></div>
+    </section>
+
+    <section class="hub-section" id="updates">
+      <div class="video-heading">
+        <span class="logo-kicker">Patch Notes</span>
+        <h2>Updates</h2>
+        <p>Was sich im CONTENTCR3W-System, in Redstone Labs und CC3 Music veraendert.</p>
+      </div>
+      <div class="hub-card-grid updates-grid" id="updatesGrid"></div>
+    </section>
+
+    <section class="hub-section shop-section" id="shop">
+      <div class="video-heading">
+        <span class="logo-kicker">Shop Gate</span>
+        <h2>Shop</h2>
+        <p>Coming Soon: noch keine Kaeufe, kein Warenkorb, nur ein sauberer Ausblick.</p>
+      </div>
+      <div id="shopPanel" class="shop-panel"></div>
+    </section>
+
+    <section class="beyond-gate-section" id="beyond-life">
+      <div class="beyond-gate">
+        <div>
+          <span class="logo-kicker">Mystery Signal</span>
+          <h2>Beyond Life</h2>
+          <p>Ein geheimer Bereich fuer raetselhafte Story-Spuren, versteckte Hinweise, dunkle Projekte und Dinge, die erst spaeter Sinn ergeben.</p>
+        </div>
+        <a class="enter-button mystery-button" href="beyond-life/index.html">Signal betreten</a>
+      </div>
+    </section>
+
+    <section class="video-section" id="shorts">
+      <div class="video-heading">
+        <span class="logo-kicker">YouTube</span>
+        <h2>Aktuellster Upload je Creator</h2>
+        <p>JARO, DELTA, CHAOSCINDERS und cjulfy werden direkt vom YouTube-Kanal geladen. Shorts und Videos erscheinen hier automatisch nach Upload.</p>
+      </div>
+      <div class="shorts-grid live-youtube-grid" id="latestUploads">
+        <article class="video-card short-card loading-card">
+          <div class="video-thumb"><span>LOAD</span></div>
+          <h3>YouTube wird geladen...</h3>
+          <p>Die neuesten Uploads werden vom lokalen Server abgefragt.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="video-section" id="videos">
+      <div class="video-heading">
+        <span class="logo-kicker">YouTube</span>
+        <h2>Kanal-Links</h2>
+        <p>Direkt zu den vier CONTENTCR3W-Kanaelen.</p>
+      </div>
+      <div class="videos-grid">
+        <a class="video-card wide-video" href="https://www.youtube.com/@jaro-JJB" target="_blank" rel="noreferrer"><div class="video-thumb"><span>JARO</span></div><div><h3>@jaro-JJB</h3><p>JARO YouTube-Kanal oeffnen.</p></div></a>
+        <a class="video-card wide-video" href="https://www.youtube.com/@deltajoelplay" target="_blank" rel="noreferrer"><div class="video-thumb"><span>DELTA</span></div><div><h3>@deltajoelplay</h3><p>DELTA YouTube-Kanal oeffnen.</p></div></a>
+        <a class="video-card wide-video" href="https://www.youtube.com/@ChaosCinders" target="_blank" rel="noreferrer"><div class="video-thumb"><span>CHAOS</span></div><div><h3>@ChaosCinders</h3><p>CHAOSCINDERS YouTube-Kanal oeffnen.</p></div></a>
+        <a class="video-card wide-video" href="https://www.youtube.com/@Cjulfy" target="_blank" rel="noreferrer"><div class="video-thumb"><span>CJULFY</span></div><div><h3>@Cjulfy</h3><p>cjulfy YouTube-Kanal oeffnen.</p></div></a>
+      </div>
+    </section>
+  </main>
+  <script src="../../assets/js/app.js"></script>
+  <script src="contentcr3w.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CC3 Music - JARO & DELTA</title>
+  <meta name="description" content="CC3 Music Plattform mit Player, Playlists und Admin Upload.">
+  <meta name="theme-color" content="#090314">
+  <link rel="icon" type="image/png" href="../../assets/img/cc3-icon.png">
+  <link rel="apple-touch-icon" href="../../assets/img/cc3-icon.png">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="music.css">
+</head>
+<body class="music-page">
+  <main class="music-app">
+    <aside class="music-sidebar">
+      <a href="../../index.html" class="music-brand">
+        <img src="../../assets/img/cc3-icon.png" alt="CC3 Music Logo">
+        <strong>CC3 Music</strong>
+      </a>
+      <nav class="side-menu" aria-label="CC3 Music Navigation">
+        <span>Entdecken</span>
+        <a href="index.html" class="is-active">Startseite</a>
+        <a href="index.html#library">Songs</a>
+        <a href="index.html#library">Kategorien</a>
+        <a href="#player">Aktueller Song</a>
+      </nav>
+      <nav class="side-menu" aria-label="Bibliothek">
+        <span>Bibliothek</span>
+        <a href="playlist.html">Playlist</a>
+        <a href="playlist.html">Favoriten</a>
+        <a href="playlist.html">Playlist erstellen</a>
+        <a href="admin.html">Admin Upload</a>
+      </nav>
+      <nav class="side-menu side-menu-bottom" aria-label="Weitere Links">
+        <span>System</span>
+        <a href="../../categories/redstone-labs/index.html">Redstone Labs</a>
+        <a href="../../index.html#datenschutz">Datenschutz</a>
+        <a href="../../index.html">JARO & DELTA</a>
+      </nav>
+    </aside>
+
+    <section class="music-main">
+      <header class="music-top start-focus">
+        <div class="music-copy">
+          <span class="logo-kicker">CC3 Music Core</span>
+          <h1>Aktuelle Songs</h1>
+          <p>Der neueste Upload steht oben im Fokus. Darunter findest du alle Songs sauber sortiert und direkt abspielbar.</p>
+        </div>
+        <section class="now-player" id="player">
+          <div class="cover-glow">
+            <div id="coverArt" class="cover-art"><span>CC3</span></div>
+          </div>
+          <div class="track-meta featured-meta">
+            <span id="trackArtist">Keine Songs geladen</span>
+            <h2 id="trackTitle">Upload im Admin Panel</h2>
+            <p id="trackDesc">Starte den Server, logge dich mit JARO ein und lade deinen ersten Track hoch.</p>
+          </div>
+          <div class="wave-bars featured-controls" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <audio id="audio"></audio>
+          <input id="seek" class="seek featured-controls" type="range" min="0" max="100" value="0">
+          <div class="player-controls featured-controls">
+            <button id="prevBtn" type="button">Back</button>
+            <button id="playBtn" class="main-play" type="button">Play</button>
+            <button id="nextBtn" type="button">Next</button>
+            <button id="shuffleBtn" type="button">Shuffle</button>
+            <button id="repeatBtn" type="button">Repeat</button>
+          </div>
+          <div class="volume-row featured-controls">
+            <span id="timeReadout">0:00 / 0:00</span>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.86">
+          </div>
+        </section>
+      </header>
+
+      <section class="music-grid home-grid">
+        <section class="music-panel" id="library">
+        <div class="panel-heading">
+          <span class="logo-kicker">Library</span>
+          <h2>Alle Songs</h2>
+        </div>
+        <div class="music-toolbar">
+          <input id="librarySearch" type="search" placeholder="Songs suchen...">
+          <select id="librarySort" aria-label="Songs sortieren">
+            <option value="newest">Neueste zuerst</option>
+            <option value="title">Titel A-Z</option>
+            <option value="artist">Artist A-Z</option>
+            <option value="album">Album A-Z</option>
+            <option value="category">Kategorie A-Z</option>
+          </select>
+          <select id="categoryFilter" aria-label="Kategorie filtern">
+            <option value="all">Alle Kategorien</option>
+          </select>
+        </div>
+        <div id="trackList" class="track-list"></div>
+      </section>
+      <div id="statusLine" class="status-line"></div>
+
+      <section class="bottom-player" aria-label="Player Steuerung">
+        <div class="bottom-track">
+          <div id="bottomCover" class="bottom-cover">CC3</div>
+          <div>
+            <strong id="bottomTitle">Kein Song</strong>
+            <span id="bottomArtist">Waehle einen Song</span>
+          </div>
+        </div>
+        <div class="bottom-controls">
+          <div>
+            <button id="bottomPrevBtn" type="button">Back</button>
+            <button id="bottomPlayBtn" class="main-play" type="button">Play</button>
+            <button id="bottomNextBtn" type="button">Next</button>
+            <button id="bottomShuffleBtn" type="button">Shuffle</button>
+            <button id="bottomRepeatBtn" type="button">Repeat</button>
+          </div>
+          <input id="bottomSeek" class="seek" type="range" min="0" max="100" value="0">
+        </div>
+        <div class="bottom-volume">
+          <span id="bottomTimeReadout">0:00 / 0:00</span>
+          <input id="bottomVolume" type="range" min="0" max="1" step="0.01" value="0.86">
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="music.js"></script>
+</body>
+</html>

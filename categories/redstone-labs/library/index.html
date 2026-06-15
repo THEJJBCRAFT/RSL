@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RSL Mods &amp; Plugins - Redstone Labs</title>
+  <meta name="description" content="RSL Mods und Plugins mit Dokumentation, Videos, Kompatibilitaet und Downloads.">
+  <meta name="theme-color" content="#0a0204">
+  <link rel="stylesheet" href="../../../assets/css/styles.css">
+</head>
+<body class="redstone-page library-page">
+  <main class="redstone-shell">
+    <nav class="site-nav redstone-nav">
+      <a href="../../../index.html#projekte" class="wordmark">JARO & DELTA</a>
+      <div>
+        <a href="../../../index.html">Start</a>
+        <a href="../index.html">Redstone Labs</a>
+        <a href="../online-tools/index.html">Online Tools</a>
+        <a href="#plugins">Plugins</a>
+        <a href="#mods">Mods</a>
+        <a href="#downloads">Downloads</a>
+      </div>
+    </nav>
+
+    <header class="library-hero">
+      <div class="library-hero-copy">
+        <span class="logo-kicker">RSL Library Core</span>
+        <h1>RSL Mods &amp; Plugins</h1>
+        <p>Eine echte Redstone-Labs Bibliothek: einzelne Plugins und Mods mit Aufbau, Funktion, Kompatibilitaet, Video-Platzhalter und direktem Download.</p>
+        <div class="library-switch" aria-label="RSL Kategorien">
+          <a href="#plugins">Plugins ansehen</a>
+          <a href="#mods">Mods ansehen</a>
+        </div>
+      </div>
+      <aside class="library-status">
+        <img src="../../../assets/img/rsl_logo.png" alt="RSL Logo">
+        <div><span>Plugins</span><strong>3 dokumentiert</strong></div>
+        <div><span>Mods</span><strong>4 vorbereitet</strong></div>
+        <div><span>Videos</span><strong>Platzhalter aktiv</strong></div>
+      </aside>
+    </header>
+
+    <section class="library-intro" id="downloads">
+      <div>
+        <span class="logo-kicker">Download Zentrum</span>
+        <h2>Alles einzeln oder als Sammlung.</h2>
+        <p>Du kannst einzelne RSL Plugins direkt herunterladen oder weiterhin die komplette Sammlung mit Jars, Configs und Source-Projekten nutzen.</p>
+      </div>
+      <div class="library-download-row">
+        <a class="enter-button" href="../../../downloads/rsl/RSL_Plugin_Sammlung.zip" download>Komplette Plugin Sammlung</a>
+        <a class="enter-button" href="#plugins">Einzelne Plugins</a>
+      </div>
+    </section>
+
+    <section class="library-section" id="plugins">
+      <div class="category-heading">
+        <span class="logo-kicker">Kategorie 01</span>
+        <h2>RSL Plugins</h2>
+        <p>Paper/Spigot Plugins fuer Server-Systeme, TAB-Anzeige, Ranks, Economy und Join-Effekte.</p>
+      </div>
+
+      <article class="library-card" id="rslranks">
+        <div class="library-card-head">
+          <div>
+            <span>Plugin</span>
+            <h3>RSLRanks</h3>
+            <p>Rang- und Rechte-System fuer Paper/Spigot 1.20.1 bis 1.21.x mit Vault, TAB und PlaceholderAPI Support.</p>
+          </div>
+          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLRanks-1.0.0.jar" download>RSLRanks downloaden</a>
+        </div>
+        <div class="library-card-body">
+          <div class="doc-grid">
+            <section>
+              <h4>So funktioniert es</h4>
+              <p>RSLRanks speichert Spieler mit UUID, letztem Namen, Rang und Extra-Permissions. Beim Join bekommt der Spieler ein PermissionAttachment, das aus Rang, Vererbung und Extra-Rechten neu aufgebaut wird.</p>
+            </section>
+            <section>
+              <h4>Installation</h4>
+              <p>Jar in den Paper/Spigot `plugins` Ordner legen, Server starten, `config.yml` anpassen und danach `/rank reload` ausfuehren.</p>
+            </section>
+            <section>
+              <h4>Befehle</h4>
+              <p>`/rank help`, `/rank user &lt;spieler&gt; set &lt;rang&gt;`, `/rank reload`, `/rank tabconfig`.</p>
+            </section>
+            <section>
+              <h4>Permissions</h4>
+              <p>`rslranks.admin` gibt vollen Verwaltungszugriff. OP-Spieler koennen Raenge vergeben, wenn die Server-Regeln es erlauben.</p>
+            </section>
+            <section>
+              <h4>Arbeitet zusammen mit</h4>
+              <p>Vault fuer Gruppen und Prefixe, TAB fuer Tablisten-Sortierung, PlaceholderAPI fuer `%rslranks_rank%`, `%rslranks_prefix%`, `%rslranks_priority%` und `%rslranks_color%`.</p>
+            </section>
+            <section>
+              <h4>Wichtig fuer maximale Funktion</h4>
+              <p>Vault und TAB installieren, dann `/rank tabconfig` nutzen und die ausgegebene Gruppenreihenfolge in TAB uebernehmen.</p>
+            </section>
+          </div>
+          <div class="video-placeholder">
+            <span>VIDEO</span>
+            <strong>RSLRanks Tutorial kommt bald</strong>
+            <p>Platzhalter fuer ein Video zu Rang erstellen, Spieler setzen, TAB verbinden.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="library-card" id="rslbalance">
+        <div class="library-card-head">
+          <div>
+            <span>Plugin</span>
+            <h3>RSLBalance</h3>
+            <p>Eigenes Vault-Economy-Plugin fuer Kontostand, Admin-Economy und TAB Balance-Anzeige.</p>
+          </div>
+          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLBalance-1.0.0.jar" download>RSLBalance downloaden</a>
+        </div>
+        <div class="library-card-body">
+          <div class="doc-grid">
+            <section>
+              <h4>So funktioniert es</h4>
+              <p>RSLBalance registriert eine Economy ueber Vault. Andere Plugins koennen dadurch Geldwerte lesen, setzen oder anzeigen, wenn sie Vault-Economy nutzen.</p>
+            </section>
+            <section>
+              <h4>Installation</h4>
+              <p>Vault zuerst installieren, dann RSLBalance in den `plugins` Ordner legen und Server starten.</p>
+            </section>
+            <section>
+              <h4>Befehle</h4>
+              <p>`/rslbalance`, `/rslbalance &lt;spieler&gt;`, `/rsleco set &lt;spieler&gt; &lt;betrag&gt;`, `/rsleco add`, `/rsleco take`, `/rsleco reload`.</p>
+            </section>
+            <section>
+              <h4>Permissions</h4>
+              <p>`rslbalance.admin` fuer Admin-Befehle. OPs bekommen die Admin-Rechte automatisch.</p>
+            </section>
+            <section>
+              <h4>Arbeitet zusammen mit</h4>
+              <p>Vault, TAB und PlaceholderAPI. TAB kann `%vault_eco_balance_formatted%` anzeigen; PlaceholderAPI kann `%rslbalance_balance%` und `%rslbalance_balance_formatted%` nutzen.</p>
+            </section>
+            <section>
+              <h4>Wichtig fuer maximale Funktion</h4>
+              <p>RSLBalance sollte die aktive Vault-Economy sein. Wenn ein anderes Economy-Plugin installiert ist, muss klar sein, welches Plugin Vault zuerst nutzt.</p>
+            </section>
+          </div>
+          <div class="video-placeholder">
+            <span>VIDEO</span>
+            <strong>RSLBalance Setup kommt bald</strong>
+            <p>Platzhalter fuer ein Video zu Vault, TAB Scoreboard und Geld-Befehlen.</p>
+          </div>
+        </div>
+      </article>
+
+      <article class="library-card" id="rslwelcome">
+        <div class="library-card-head">
+          <div>
+            <span>Plugin</span>
+            <h3>RSLWelcome</h3>
+            <p>Animierte Join-Titles mit Sound, privater Willkommensnachricht und eigener Servername-Datei.</p>
+          </div>
+          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLWelcome-1.0.0.jar" download>RSLWelcome downloaden</a>
+        </div>
+        <div class="library-card-body">
+          <div class="doc-grid">
+            <section>
+              <h4>So funktioniert es</h4>
+              <p>Beim Join startet nach kurzer Verzoegerung ein Title: erst WILLKOMMEN, danach wird der Spielername Buchstabe fuer Buchstabe geschrieben. Optional spielt das Plugin Sounds ab.</p>
+            </section>
+            <section>
+              <h4>Installation</h4>
+              <p>Jar in den `plugins` Ordner legen, Server starten und `plugins/RSLWelcome/config.yml` sowie `server-name.yml` anpassen.</p>
+            </section>
+            <section>
+              <h4>Befehle</h4>
+              <p>`/rslwelcome reload` laedt die Config neu. `/rslwelcome test` zeigt den Effekt fuer dich selbst.</p>
+            </section>
+            <section>
+              <h4>Permissions</h4>
+              <p>`rslwelcome.admin` erlaubt Reload und Test-Befehl. OPs haben diese Rechte automatisch.</p>
+            </section>
+            <section>
+              <h4>Arbeitet zusammen mit</h4>
+              <p>Laeuft alleine. Passt optisch zu TAB, RSLRanks, RSLBalance und dem NeyexSMP/Redstone-Labs Design.</p>
+            </section>
+            <section>
+              <h4>Wichtig fuer maximale Funktion</h4>
+              <p>Den Servernamen in `plugins/RSLWelcome/server-name.yml` fest eintragen, damit kein Hoster-Name aus der MOTD angezeigt wird.</p>
+            </section>
+          </div>
+          <div class="video-placeholder">
+            <span>VIDEO</span>
+            <strong>RSLWelcome Effekt kommt bald</strong>
+            <p>Platzhalter fuer ein Video zum Title, Sound und Servernamen.</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="library-section" id="mods">
+      <div class="category-heading">
+        <span class="logo-kicker">Kategorie 02</span>
+        <h2>RSL Mods</h2>
+        <p>Vorbereitete Mod-Galerie fuer Redstone-Labs und Jaro-Projekte. Downloads sind nur aktiv, wenn eine fertige Jar eindeutig vorhanden ist.</p>
+      </div>
+      <div class="mod-gallery">
+        <article>
+          <span>Forge</span>
+          <h3>Jaro TNT Mayhem</h3>
+          <p>Lucky-artige TNTs, Spezialeffekte, Building TNTs und starke Explosionen fuer das Minecraft Escape Profil.</p>
+          <a href="../../../downloads/rsl/mods/jaro_tnt_mayhem-1.0.0.jar" download>Mod downloaden</a>
+        </article>
+        <article>
+          <span>Forge</span>
+          <h3>Varkonia Powers</h3>
+          <p>Power-System mit Items, Crafting und Server-Kompatibilitaet. Verlinkt ist die neueste gefundene Version.</p>
+          <a href="../../../downloads/rsl/mods/varkonia_powers-1.0.47.jar" download>Mod downloaden</a>
+        </article>
+        <article>
+          <span>Fabric</span>
+          <h3>Redstone Labs Timeline Bridge</h3>
+          <p>Companion-Mod fuer das Datapack Timeline Studio und Live-Tests direkt aus Redstone Labs.</p>
+          <a href="../../../downloads/rsl/mods/redstone-labs-timeline-bridge-0.1.0.jar" download>Mod downloaden</a>
+        </article>
+        <article>
+          <span>Fabric</span>
+          <h3>Redstone Labs Programming</h3>
+          <p>Programmier- und Skript-Labor fuer Redstone-Labs Experimente und eigene Minecraft-Automation.</p>
+          <a href="../../../downloads/rsl/mods/redstone-labs-programming-0.1.0.jar" download>Mod downloaden</a>
+        </article>
+        <article>
+          <span>Geplant</span>
+          <h3>Mehr RSL Mods</h3>
+          <p>Weitere Mods koennen spaeter mit eigener Doku, Video und Download ergaenzt werden.</p>
+          <strong>Kommt bald</strong>
+        </article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

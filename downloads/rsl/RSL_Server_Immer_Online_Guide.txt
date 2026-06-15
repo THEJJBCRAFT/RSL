@@ -1,0 +1,41 @@
+RSL Guide: Minecraft Server immer online
+
+Ziel:
+Der Server soll online bleiben, auch wenn dein eigener PC aus ist.
+
+Wichtig:
+Wenn dein PC aus ist, kann ein Server auf deinem PC nicht online bleiben.
+Du brauchst dafuer einen externen Server:
+- Minecraft Hoster
+- VPS / Root-Server
+- Dedicated Server
+
+Empfohlene einfache Loesung:
+1. Minecraft Hoster mit Paper/Spigot oder Forge auswaehlen.
+2. Server-Version passend zum Projekt einstellen.
+3. Plugins in den plugins Ordner hochladen.
+4. Bei Forge-Modpacks die Mods in den mods Ordner hochladen.
+5. server.properties anpassen:
+   motd=\u00A76\u00A7l\u2726 \u00A7fWillkommen bei \u00A7e\u00A7lNeyexSMP \u00A76\u00A7l\u2726 \u00A78| \u00A7cRedstone Labs
+6. Server starten und Logs pruefen.
+
+RSL Plugin Reihenfolge:
+1. Vault installieren.
+2. TAB installieren.
+3. PlaceholderAPI installieren, wenn Placeholder genutzt werden sollen.
+4. RSLRanks installieren.
+5. RSLBalance installieren.
+6. RSLWelcome installieren.
+
+Hinweis:
+RSLBalance ist die Economy fuer Vault.
+RSLRanks ist fuer Gruppen und Rechte.
+RSLWelcome ist fuer Join-Title und Willkommensnachricht.
+
+Test:
+- /plugins
+- /rank help
+- /rslbalance
+- /rslwelcome test
+- /tab reload
+

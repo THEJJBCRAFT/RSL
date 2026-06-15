@@ -1,0 +1,56 @@
+{
+  "events": [
+    {
+      "title": "CONTENTCR3W Community Abend",
+      "datetime": "2026-06-01T19:00:00+02:00",
+      "status": "PLANNED",
+      "description": "Ein gemeinsamer Abend fuer neue Clips, Minecraft-Ideen, Musik und Crew-News.",
+      "cta": "Event vormerken"
+    },
+    {
+      "title": "Minecraft Escape Session",
+      "datetime": "2026-06-08T18:30:00+02:00",
+      "status": "SOON",
+      "description": "Neue Aufnahme- und Serverrunde fuer CONTENTCR3W-Projekte.",
+      "cta": "Details folgen"
+    }
+  ],
+  "servers": [
+    {
+      "name": "CC3 Minecraft Projektserver",
+      "game": "Minecraft",
+      "status": "PLANNED",
+      "players": "0/20",
+      "description": "Privater Projektserver fuer Builds, Aufnahmen, Datapacks und Crew-Events."
+    },
+    {
+      "name": "Redstone Labs Testwelt",
+      "game": "Minecraft / Datapacks",
+      "status": "LIVE",
+      "players": "Local",
+      "description": "Testbereich fuer Commands, Datapack Timeline Studio und Live-Experimente."
+    }
+  ],
+  "updates": [
+    {
+      "version": "CC3-HUB 0.3",
+      "date": "2026-05-17",
+      "category": "UPDATE",
+      "title": "CONTENTCR3W Hub gestartet",
+      "description": "Events, Serverstatus, Updates, Shop-Teaser und YouTube-Feeds werden auf einer Seite gebuendelt."
+    },
+    {
+      "version": "MUSIC 0.2",
+      "date": "2026-05-17",
+      "category": "MUSIC",
+      "title": "CC3 Music ausgebaut",
+      "description": "Playlist, Admin-Upload, Coverbilder, lokaler Player und eigener Music-Bereich sind aktiv."
+    }
+  ],
+  "shop": {
+    "status": "SOON",
+    "title": "CONTENTCR3W Shop kommt bald",
+    "description": "Geplant sind digitale Downloads, Server-Packs, Projektdateien, CC3-Assets und spaeter Merch.",
+    "categories": ["Merch", "Downloads", "Server-Packs", "Assets"]
+  }
+}

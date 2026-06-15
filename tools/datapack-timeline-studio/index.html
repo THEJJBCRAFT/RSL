@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redstone Labs Datapack Timeline Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="embedded-tool-nav">
+    <a href="../../categories/redstone-labs/online-tools/index.html">Zurueck zu Redstone Labs Tools</a>
+    <span>REDSTONE LABS ONLINE TOOL</span>
+  </nav>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="title-block">
+        <div class="brand">REDSTONE LABS</div>
+        <h1>Datapack Timeline Studio</h1>
+      </div>
+      <div class="project-stats" aria-label="Projektstatus">
+        <div class="stat"><span id="statClips">0</span><small>Clips</small></div>
+        <div class="stat"><span id="statFunctions">0</span><small>Functions</small></div>
+        <div class="stat"><span id="statIssues">0</span><small>Checks</small></div>
+        <div class="stat"><span id="statBridge">OFF</span><small>Bridge</small></div>
+      </div>
+      <div class="top-actions">
+        <button id="validateBtn">Check</button>
+        <button id="playBtn">Play</button>
+        <button id="resetBtn">Reset</button>
+        <button id="exportBtn" class="primary">Export Zip</button>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Projekt</h2>
+            <span id="projectBadge" class="badge ok">OK</span>
+          </div>
+          <label>
+            Name
+            <input id="packName" value="Redstone Labs Timeline">
+          </label>
+          <label>
+            Namespace
+            <input id="namespace" value="redstone_labs" spellcheck="false">
+          </label>
+          <div class="split">
+            <label>
+              Pack-Format
+              <input id="packFormat" type="number" value="94.1" step="0.1" min="4">
+            </label>
+            <label>
+              Sekunden
+              <input id="lengthSeconds" type="number" value="30" min="1" max="600">
+            </label>
+          </div>
+          <label class="toggle-row">
+            <input id="autoStart" type="checkbox" checked>
+            <span>Autostart nach /reload</span>
+          </label>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Aktionen</h2>
+            <span class="badge">Palette</span>
+          </div>
+          <div class="tool-grid">
+            <button data-add="command">Command</button>
+            <button data-add="say">Say</button>
+            <button data-add="give">Give</button>
+            <button data-add="setblock">Setblock</button>
+            <button data-add="summon">Summon</button>
+            <button data-add="effect">Effect</button>
+            <button data-add="title">Title</button>
+            <button data-add="function">Function</button>
+          </div>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Minecraft</h2>
+            <span class="badge">Start</span>
+          </div>
+          <pre id="minecraftStartPreview"></pre>
+          <button id="copyStartBtn">Start-Command kopieren</button>
+        </section>
+
+        <section class="panel compact live-panel">
+          <div class="panel-title">
+            <h2>Live Minecraft</h2>
+            <span id="bridgeStatusBadge" class="badge warn">OFFLINE</span>
+          </div>
+          <div class="split">
+            <label>
+              Bridge-Port
+              <input id="bridgePort" type="number" value="24864" min="1024" max="65535">
+            </label>
+            <label class="toggle-row live-toggle">
+              <input id="bridgeAutoConnect" type="checkbox">
+              <span>Auto</span>
+            </label>
+          </div>
+          <div class="bridge-actions">
+            <button id="bridgeConnectBtn">Verbinden</button>
+            <button id="bridgeDisconnectBtn">Trennen</button>
+          </div>
+          <div class="live-transport">
+            <button id="livePlayBtn">Live Play</button>
+            <button id="livePauseBtn">Pause</button>
+            <button id="liveStopBtn">Stop</button>
+            <button id="liveStepBtn">Step</button>
+          </div>
+          <div class="bridge-actions">
+            <button id="liveSendClipBtn">Selected Clip senden</button>
+            <button id="liveSyncBtn">Sync Datapack</button>
+          </div>
+          <pre id="bridgeWorldStatus"></pre>
+          <div id="bridgeLog" class="bridge-log"></div>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Real Sim</h2>
+            <span class="badge">Game</span>
+          </div>
+          <label class="toggle-row">
+            <input id="exportRealSim" type="checkbox" checked>
+            <span>Minecraft-Simulationsplatz exportieren</span>
+          </label>
+          <label class="toggle-row">
+            <input id="exportFirstPersonSim" type="checkbox" checked>
+            <span>First-Person-Simulation exportieren</span>
+          </label>
+          <pre id="realSimPreview"></pre>
+          <button id="copyRealSimBtn">Sim-Commands kopieren</button>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Resource Pack</h2>
+            <span class="badge">RP</span>
+          </div>
+          <label>
+            Name
+            <input id="resourcePackName" value="Redstone Labs Timeline Resources">
+          </label>
+          <div class="split">
+            <label>
+              RP-Format
+              <input id="resourcePackFormat" type="number" value="75" step="0.1" min="1">
+            </label>
+            <label>
+              Shader
+              <select id="shaderMode">
+                <option value="red_tint">Red Labs Tint</option>
+                <option value="scanline">Scanline</option>
+                <option value="none">Kein Shader</option>
+              </select>
+            </label>
+          </div>
+          <button id="exportResourcePackBtn">Resource Pack Zip</button>
+        </section>
+      </aside>
+
+      <section class="stage">
+        <div class="transport">
+          <div class="time-readout"><span id="currentTick">0</span> ticks / <span id="currentSecond">0.00</span>s</div>
+          <input id="playhead" type="range" min="0" max="600" value="0">
+          <button id="addMarkerBtn">Clip bei Playhead</button>
+        </div>
+
+        <section class="simulation-panel">
+          <div class="sim-header">
+            <div>
+              <h2>Simulation</h2>
+              <p>Zeigt, was in Minecraft bei diesem Tick passieren wuerde.</p>
+            </div>
+            <div class="sim-actions">
+              <button id="stepBackBtn">-1 Tick</button>
+              <button id="stepForwardBtn">+1 Tick</button>
+              <button id="clearSimBtn">Log leeren</button>
+            </div>
+          </div>
+          <div class="sim-grid">
+            <div id="simStage" class="sim-stage" aria-label="Minecraft Simulation Preview">
+              <div class="sim-ground"></div>
+              <div class="sim-player"></div>
+              <div id="simObjects" class="sim-objects"></div>
+            </div>
+            <div class="sim-side">
+              <div>
+                <div class="sim-label">Aktueller Tick</div>
+                <pre id="simCurrent"></pre>
+              </div>
+              <div>
+                <div class="sim-label">Naechste Aktionen</div>
+                <pre id="simUpcoming"></pre>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="timelineHead" class="timeline-head"></div>
+        <div id="timeline" class="timeline" aria-label="Timeline"></div>
+      </section>
+
+      <aside class="inspector">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Inspector</h2>
+            <span id="clipBadge" class="badge">Clip</span>
+          </div>
+          <div id="emptyInspector" class="empty-state">Kein Clip ausgewaehlt.</div>
+          <form id="clipForm" class="hidden">
+            <label>
+              Titel
+              <input id="clipLabel">
+            </label>
+            <div class="split">
+              <label>
+                Spur
+                <select id="clipTrack">
+                  <option value="World">World</option>
+                  <option value="Player">Player</option>
+                  <option value="Entities">Entities</option>
+                  <option value="UI">UI</option>
+                  <option value="Logic">Logic</option>
+                </select>
+              </label>
+              <label>
+                Typ
+                <select id="clipType">
+                  <option value="command">Command</option>
+                  <option value="say">Say</option>
+                  <option value="give">Give</option>
+                  <option value="setblock">Setblock</option>
+                  <option value="summon">Summon</option>
+                  <option value="effect">Effect</option>
+                  <option value="title">Title</option>
+                  <option value="function">Function</option>
+                </select>
+              </label>
+            </div>
+            <div class="split">
+              <label>
+                Start-Tick
+                <input id="clipStart" type="number" min="0">
+              </label>
+              <label>
+                Dauer
+                <input id="clipDuration" type="number" min="1">
+              </label>
+            </div>
+            <label>
+              Ausfuehrung
+              <select id="clipMode">
+                <option value="both">Export + Live</option>
+                <option value="export">Nur Export</option>
+                <option value="live">Nur Live</option>
+              </select>
+            </label>
+            <label>
+              Werte
+              <textarea id="clipValue" rows="5" spellcheck="false"></textarea>
+            </label>
+            <div id="valueHint" class="value-hint"></div>
+            <div class="inspector-actions">
+              <button type="button" id="duplicateBtn">Duplizieren</button>
+              <button type="button" id="deleteBtn" class="danger">Loeschen</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Command</h2>
+            <span id="commandState" class="badge ok">OK</span>
+          </div>
+          <pre id="commandPreview"></pre>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Datapack</h2>
+            <span class="badge">Files</span>
+          </div>
+          <pre id="filePreview"></pre>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Check</h2>
+            <span id="validationState" class="badge ok">OK</span>
+          </div>
+          <div id="validationList" class="validation-list"></div>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-title">
+            <h2>Sim Log</h2>
+            <span class="badge">Live</span>
+          </div>
+          <div id="simLog" class="sim-log"></div>
+        </section>
+      </aside>
+    </section>
+  </main>
+
+  <template id="trackTemplate">
+    <div class="track">
+      <div class="track-label"></div>
+      <div class="track-lane"></div>
+    </div>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

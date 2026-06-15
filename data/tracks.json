@@ -1,0 +1,70 @@
+[
+  {
+    "id": "f06a0d49da303d42dd6c",
+    "title": "JARO THE VARKONIA",
+    "artist": "JARO",
+    "album": "jaro",
+    "category": "CC3 Music",
+    "description": "",
+    "tags": [
+      "Jaro",
+      "cc3"
+    ],
+    "downloadAllowed": true,
+    "audioUrl": "/uploads/music/f06a0d49da303d42dd6c.mp3",
+    "coverUrl": "/uploads/covers/f06a0d49da303d42dd6c.png",
+    "createdAt": "2026-05-16T23:27:46.498Z",
+    "updatedAt": "2026-05-16T23:28:19.897Z"
+  },
+  {
+    "id": "66adfdef5c748773e3bc",
+    "title": "FNF vs DELTA & JARO",
+    "artist": "JARO",
+    "album": "JARO",
+    "category": "funny",
+    "description": "",
+    "tags": [
+      "Jaro",
+      "funny"
+    ],
+    "downloadAllowed": true,
+    "audioUrl": "/uploads/music/66adfdef5c748773e3bc.mp3",
+    "coverUrl": "/uploads/covers/66adfdef5c748773e3bc.png",
+    "createdAt": "2026-05-16T23:19:27.575Z",
+    "updatedAt": "2026-05-16T23:20:59.200Z"
+  },
+  {
+    "id": "ab034bd4d9aa02127f04",
+    "title": "RedSteinn Präsenz",
+    "artist": "REDSTEIN",
+    "album": "REDSTEIN",
+    "category": "funny",
+    "description": "",
+    "tags": [
+      "cc3",
+      "redstein",
+      "funny"
+    ],
+    "downloadAllowed": true,
+    "audioUrl": "/uploads/music/ab034bd4d9aa02127f04.mp3",
+    "coverUrl": "/uploads/covers/ab034bd4d9aa02127f04-cover-1778972410029.png",
+    "createdAt": "2026-05-16T22:52:40.340Z",
+    "updatedAt": "2026-05-16T23:20:47.636Z"
+  },
+  {
+    "id": "b44e0a9bf61e11497470",
+    "title": "Just a Dream",
+    "artist": "DELTA",
+    "album": "deltania",
+    "category": "CC3 Music",
+    "description": "",
+    "tags": [
+      "Delta"
+    ],
+    "downloadAllowed": true,
+    "audioUrl": "/uploads/music/b44e0a9bf61e11497470.mp3",
+    "coverUrl": "/uploads/covers/b44e0a9bf61e11497470-cover-1778967950439.png",
+    "createdAt": "2026-05-16T21:02:15.574Z",
+    "updatedAt": "2026-05-16T21:56:42.900Z"
+  }
+]

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CC3 Admin - JARO & DELTA</title>
+  <meta name="description" content="CC3 Music Plattform mit Player, Playlists und Admin Upload.">
+  <meta name="theme-color" content="#090314">
+  <link rel="icon" type="image/png" href="../../assets/img/cc3-icon.png">
+  <link rel="apple-touch-icon" href="../../assets/img/cc3-icon.png">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="music.css">
+</head>
+<body class="music-page">
+  <main class="music-app">
+    <aside class="music-sidebar">
+      <a href="../../index.html" class="music-brand">
+        <img src="../../assets/img/cc3-icon.png" alt="CC3 Music Logo">
+        <strong>CC3 Music</strong>
+      </a>
+      <nav class="side-menu" aria-label="CC3 Music Navigation">
+        <span>Entdecken</span>
+        <a href="index.html">Startseite</a>
+        <a href="index.html#library">Songs</a>
+        <a href="index.html#library">Kategorien</a>
+        <a href="#player">Aktueller Song</a>
+      </nav>
+      <nav class="side-menu" aria-label="Bibliothek">
+        <span>Bibliothek</span>
+        <a href="playlist.html">Playlist</a>
+        <a href="playlist.html">Favoriten</a>
+        <a href="playlist.html">Playlist erstellen</a>
+        <a href="admin.html" class="is-active">Admin Upload</a>
+      </nav>
+      <nav class="side-menu side-menu-bottom" aria-label="Weitere Links">
+        <span>System</span>
+        <a href="../../categories/redstone-labs/index.html">Redstone Labs</a>
+        <a href="../../index.html#datenschutz">Datenschutz</a>
+        <a href="../../index.html">JARO & DELTA</a>
+      </nav>
+    </aside>
+
+    <section class="music-main">
+      <header class="music-top start-focus">
+        <div class="music-copy">
+          <span class="logo-kicker">CC3 Music Core</span>
+          <h1>Admin Panel</h1>
+          <p>Songs hochladen, Titelbilder austauschen, Metadaten bearbeiten und alte Tracks sauber loeschen.</p>
+        </div>
+        <section class="now-player" id="player">
+          <div class="cover-glow">
+            <div id="coverArt" class="cover-art"><span>CC3</span></div>
+          </div>
+          <div class="track-meta">
+            <span id="trackArtist">Keine Songs geladen</span>
+            <h2 id="trackTitle">Upload im Admin Panel</h2>
+            <p id="trackDesc">Starte den Server, logge dich mit JARO ein und lade deinen ersten Track hoch.</p>
+          </div>
+          <div class="wave-bars" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <audio id="audio"></audio>
+          <input id="seek" class="seek" type="range" min="0" max="100" value="0">
+          <div class="player-controls">
+            <button id="prevBtn" type="button">Back</button>
+            <button id="playBtn" class="main-play" type="button">Play</button>
+            <button id="nextBtn" type="button">Next</button>
+            <button id="shuffleBtn" type="button">Shuffle</button>
+            <button id="repeatBtn" type="button">Repeat</button>
+          </div>
+          <div class="volume-row">
+            <span id="timeReadout">0:00 / 0:00</span>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.86">
+          </div>
+        </section>
+      </header>
+
+      <section class="admin-panel standalone-admin" id="admin">
+      <div class="panel-heading">
+        <span class="logo-kicker">Admin Upload</span>
+        <h2>CC3 Admin Panel</h2>
+        <p>Passwort ist serverseitig geschuetzt. Startwert: JARO.</p>
+      </div>
+      <div id="loginBox" class="admin-login">
+        <input id="adminPassword" type="password" placeholder="Passwort">
+        <button id="loginBtn" type="button">Login</button>
+      </div>
+      <form id="uploadForm" class="upload-form hidden">
+        <h3>Neuen Song hochladen</h3>
+        <div class="form-grid">
+          <label>Titel<input name="title" required></label>
+          <label>Artist / Creator<input name="artist" value="CC3"></label>
+          <label>Album<input name="album" value="Uploads"></label>
+          <label>Kategorie<input name="category" value="CC3 Music"></label>
+          <label>Tags<input name="tags" placeholder="cc3, redstone, chill"></label>
+          <label class="toggle-row"><input name="downloadAllowed" type="checkbox"><span>Download erlauben</span></label>
+        </div>
+        <label>Beschreibung<textarea name="description" rows="4"></textarea></label>
+        <div class="form-grid">
+          <label>Songdatei<input name="song" type="file" accept="audio/*" required></label>
+          <label>Titelbild / Cover / Icon<input name="cover" type="file" accept="image/*"></label>
+        </div>
+        <div class="admin-actions">
+          <button type="submit" class="enter-button">Song hochladen</button>
+          <button id="logoutBtn" type="button">Logout</button>
+        </div>
+      </form>
+      <form id="editForm" class="upload-form edit-form hidden">
+        <h3>Song bearbeiten</h3>
+        <input name="id" type="hidden">
+        <div class="form-grid">
+          <label>Titel<input name="title" required></label>
+          <label>Artist / Creator<input name="artist"></label>
+          <label>Album<input name="album"></label>
+          <label>Kategorie<input name="category"></label>
+          <label>Tags<input name="tags" placeholder="cc3, redstone, chill"></label>
+          <label class="toggle-row"><input name="downloadAllowed" type="checkbox"><span>Download erlauben</span></label>
+        </div>
+        <label>Beschreibung<textarea name="description" rows="4"></textarea></label>
+        <div class="form-grid">
+          <label>Songdatei ersetzen optional<input name="song" type="file" accept="audio/*"></label>
+          <label>Titelbild / Cover ersetzen optional<input name="cover" type="file" accept="image/*"></label>
+        </div>
+        <div class="admin-actions">
+          <button type="submit" class="enter-button">Aenderungen speichern</button>
+          <button id="cancelEditBtn" type="button">Abbrechen</button>
+        </div>
+      </form>
+      <div id="adminTrackList" class="admin-track-list"></div>
+      <div id="statusLine" class="status-line"></div>
+      </section>
+
+      <section class="bottom-player" aria-label="Player Steuerung">
+        <div class="bottom-track">
+          <div id="bottomCover" class="bottom-cover">CC3</div>
+          <div>
+            <strong id="bottomTitle">Kein Song</strong>
+            <span id="bottomArtist">Waehle einen Song</span>
+          </div>
+        </div>
+        <div class="bottom-controls">
+          <div>
+            <button id="bottomPrevBtn" type="button">Back</button>
+            <button id="bottomPlayBtn" class="main-play" type="button">Play</button>
+            <button id="bottomNextBtn" type="button">Next</button>
+            <button id="bottomShuffleBtn" type="button">Shuffle</button>
+            <button id="bottomRepeatBtn" type="button">Repeat</button>
+          </div>
+          <input id="bottomSeek" class="seek" type="range" min="0" max="100" value="0">
+        </div>
+        <div class="bottom-volume">
+          <span id="bottomTimeReadout">0:00 / 0:00</span>
+          <input id="bottomVolume" type="range" min="0" max="1" step="0.01" value="0.86">
+        </div>
+      </section>
+    </section>
+  </main>
+  <script src="music.js"></script>
+</body>
+</html>

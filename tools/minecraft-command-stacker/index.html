@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Redstone Command Stacker - Redstone Labs</title>
+  <meta name="description" content="Minecraft Java Command Generator mit Versionen von alten Releases bis 1.21.11.">
+  <meta name="theme-color" content="#090103">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="redstone-page command-stacker-page">
+  <main class="command-shell">
+    <nav class="site-nav redstone-nav command-nav">
+      <a href="../../categories/redstone-labs/online-tools/index.html" class="wordmark">REDSTONE LABS</a>
+      <div>
+        <a href="../../categories/redstone-labs/online-tools/index.html">Online Tools</a>
+        <a href="#builder">Builder</a>
+        <a href="#stack">Command Stack</a>
+        <a href="../../index.html#datenschutz">Datenschutz</a>
+      </div>
+    </nav>
+
+    <header class="command-hero">
+      <div>
+        <span class="logo-kicker">Minecraft Java Command System</span>
+        <h1>Redstone Command Stacker</h1>
+        <p>Ein eigener Command-Generator im Redstone-Labs-Stil: Version waehlen, Typ waehlen, Daten eintragen und den passenden Minecraft-Befehl bauen.</p>
+        <div class="hero-actions command-actions">
+          <a class="enter-button" href="#builder">Command bauen</a>
+          <button type="button" id="quickExampleButton">Nether-Schwert Beispiel</button>
+        </div>
+      </div>
+      <aside class="version-core" aria-label="Version Status">
+        <div><span>Aelteste Linie</span><strong>1.8</strong></div>
+        <div><span>Flattening</span><strong>1.13+</strong></div>
+        <div><span>Components</span><strong>1.20.5+</strong></div>
+        <div><span>Neuste Vorlage</span><strong>1.21.11</strong></div>
+      </aside>
+    </header>
+
+    <section class="builder-grid" id="builder">
+      <aside class="builder-panel version-panel">
+        <span class="logo-kicker">Version</span>
+        <h2>Minecraft-Version</h2>
+        <label for="versionSelect">Release</label>
+        <select id="versionSelect"></select>
+        <div class="version-readout" id="versionReadout"></div>
+        <div class="syntax-timeline" id="syntaxTimeline" aria-hidden="true"></div>
+      </aside>
+
+      <section class="builder-panel command-panel">
+        <div class="panel-head">
+          <div>
+            <span class="logo-kicker">Generator</span>
+            <h2>Command Typ</h2>
+          </div>
+          <button type="button" id="resetButton">Reset</button>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="Command Typen">
+          <button type="button" class="is-active" data-mode="give">Give</button>
+          <button type="button" data-mode="summon">Summon</button>
+          <button type="button" data-mode="particle">Particle</button>
+          <button type="button" data-mode="setblock">Setblock</button>
+          <button type="button" data-mode="effect">Effect</button>
+          <button type="button" data-mode="execute">Execute</button>
+        </div>
+
+        <form class="field-grid" id="commandForm" autocomplete="off"></form>
+      </section>
+
+      <aside class="builder-panel output-panel">
+        <span class="logo-kicker">Output</span>
+        <h2>Fertiger Command</h2>
+        <pre id="commandOutput"></pre>
+        <div class="output-actions">
+          <button type="button" id="copyButton">Kopieren</button>
+          <button type="button" id="addStackButton">Zum Stack</button>
+        </div>
+        <div class="command-report" id="commandReport"></div>
+      </aside>
+    </section>
+
+    <section class="stack-panel" id="stack">
+      <div class="stack-heading">
+        <div>
+          <span class="logo-kicker">Command Stack</span>
+          <h2>Mehrere Commands sammeln</h2>
+          <p>Baue mehrere Befehle nacheinander und exportiere sie als Text oder als einfache <code>.mcfunction</code>.</p>
+        </div>
+        <div class="stack-actions">
+          <button type="button" id="copyStackButton">Stack kopieren</button>
+          <button type="button" id="downloadFunctionButton">.mcfunction</button>
+          <button type="button" id="clearStackButton">Leeren</button>
+        </div>
+      </div>
+      <ol class="stack-list" id="stackList"></ol>
+    </section>
+
+    <section class="notes-panel">
+      <article>
+        <h3>Wichtig</h3>
+        <p>Das Tool erzeugt Java-Commands fuer haeufige Faelle. Sehr spezielle NBT-, Component- und Snapshot-Aenderungen koennen spaeter noch als eigene Presets erweitert werden.</p>
+      </article>
+      <article>
+        <h3>Keine Assets</h3>
+        <p>Es werden keine Minecraft-Bilder, Sounds oder Modelle kopiert. Das Tool nutzt nur Text-IDs fuer die Suche und baut daraus deine Commands.</p>
+      </article>
+      <article>
+        <h3>Naechster Ausbau</h3>
+        <p>Items, Bloecke, Partikel, Entities, Effekte, Enchantments, Attribute und Item Components sind jetzt suchbar bzw. waehbar. Der Generator passt Component- oder NBT-Ausgabe an die Version an.</p>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
