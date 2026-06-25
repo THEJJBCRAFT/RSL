@@ -3,15 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>RSL Mods &amp; Plugins - Redstone Labs</title>
-  <meta name="description" content="RSL Mods und Plugins mit Dokumentation, Videos, Kompatibilitaet und Downloads.">
+  <title>RSL Mods &amp; Plugins — Redstone Labs</title>
+  <meta name="description" content="Die Redstone-Labs Bibliothek: RSL Plugins und Mods mit voller Dokumentation, Befehlen, Kompatibilitaet, Versionen und direktem Download.">
   <meta name="theme-color" content="#0a0204">
   <link rel="stylesheet" href="../../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../../assets/css/enhanced.css">
 </head>
 <body class="redstone-page library-page">
   <main class="redstone-shell">
     <nav class="site-nav redstone-nav">
-      <a href="../../../index.html#projekte" class="wordmark">JARO & DELTA</a>
+      <a href="../../../index.html#projekte" class="wordmark">JARO &amp; DELTA</a>
       <div>
         <a href="../../../index.html">Start</a>
         <a href="../index.html">Redstone Labs</a>
@@ -26,211 +27,619 @@
       <div class="library-hero-copy">
         <span class="logo-kicker">RSL Library Core</span>
         <h1>RSL Mods &amp; Plugins</h1>
-        <p>Eine echte Redstone-Labs Bibliothek: einzelne Plugins und Mods mit Aufbau, Funktion, Kompatibilitaet, Video-Platzhalter und direktem Download.</p>
+        <p>Die echte Redstone-Labs Bibliothek. Jedes Plugin und jede Mod kommt mit klarer Erklaerung, Installations-Schritten, allen Befehlen, Permissions, Kompatibilitaet und direktem Download. Such dir was raus oder lade gleich die ganze Sammlung.</p>
         <div class="library-switch" aria-label="RSL Kategorien">
           <a href="#plugins">Plugins ansehen</a>
           <a href="#mods">Mods ansehen</a>
+          <a href="#downloads">Download Center</a>
         </div>
       </div>
       <aside class="library-status">
         <img src="../../../assets/img/rsl_logo.png" alt="RSL Logo">
-        <div><span>Plugins</span><strong>3 dokumentiert</strong></div>
-        <div><span>Mods</span><strong>4 vorbereitet</strong></div>
-        <div><span>Videos</span><strong>Platzhalter aktiv</strong></div>
+        <div><span>Plugins</span><strong>6 dokumentiert</strong></div>
+        <div><span>Mods</span><strong>4 verfuegbar</strong></div>
+        <div><span>Server</span><strong>Paper / Fabric / Forge</strong></div>
+        <div><span>Versionen</span><strong>1.20.1 – 1.21.x</strong></div>
       </aside>
     </header>
 
+    <!-- DOWNLOAD CENTER -->
     <section class="library-intro" id="downloads">
       <div>
-        <span class="logo-kicker">Download Zentrum</span>
-        <h2>Alles einzeln oder als Sammlung.</h2>
-        <p>Du kannst einzelne RSL Plugins direkt herunterladen oder weiterhin die komplette Sammlung mit Jars, Configs und Source-Projekten nutzen.</p>
+        <div class="section-kicker-row">
+          <span class="logo-kicker">Download Center</span>
+          <span class="line"></span>
+        </div>
+        <h2>Einzeln oder als komplette Sammlung.</h2>
+        <p>Lade jedes Plugin direkt unten in seiner Karte herunter, oder hol dir das ganze Paket mit allen Jars, Configs und Source-Projekten auf einmal.</p>
       </div>
-      <div class="library-download-row">
-        <a class="enter-button" href="../../../downloads/rsl/RSL_Plugin_Sammlung.zip" download>Komplette Plugin Sammlung</a>
-        <a class="enter-button" href="#plugins">Einzelne Plugins</a>
+      <div class="dl-hub">
+        <div class="dl-hub-card">
+          <span class="badge gold">★ Empfohlen</span>
+          <h3>Komplette Plugin-Sammlung</h3>
+          <p>Alle 6 RSL Plugins als ein Set inkl. Configs, TAB-Integration und Source-Projekten. Ideal fuer einen frischen Server-Start.</p>
+          <div class="dl-meta">
+            <span>ZIP · 1.2 MB</span>
+            <span>6 Plugins</span>
+          </div>
+          <a class="btn-download" style="margin-top:16px" href="../../../downloads/rsl/RSL_Plugin_Sammlung.zip" download data-name="RSL Plugin Sammlung.zip">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Sammlung laden
+          </a>
+        </div>
+        <div class="dl-hub-card">
+          <span class="badge aqua">Guide</span>
+          <h3>Server immer online</h3>
+          <p>Schritt-fuer-Schritt: welche RSL Plugins in welcher Reihenfolge auf den Server kommen und wie er 24/7 online bleibt.</p>
+          <div class="dl-meta">
+            <span>TXT · Anleitung</span>
+            <span>RSL Guide</span>
+          </div>
+          <a class="btn-download" style="margin-top:16px;background:linear-gradient(90deg,rgba(79,244,207,.85),rgba(8,112,95,.9));border-color:rgba(79,244,207,.5);box-shadow:0 12px 30px -14px rgba(79,244,207,.8)" href="../../../downloads/rsl/RSL_Server_Immer_Online_Guide.txt" download data-name="RSL Server Immer Online Guide.txt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Guide laden
+          </a>
+        </div>
+        <div class="dl-hub-card">
+          <span class="badge violet">Setup-Tipp</span>
+          <h3>Empfohlene Reihenfolge</h3>
+          <p>1. Vault &nbsp; 2. RSLBalance &nbsp; 3. RSLRanks &nbsp; 4. TAB &nbsp; 5. RSLSpawn / RSLWelcome &nbsp; 6. RSLNavigator &amp; RSLCrates. So greifen Economy, Ranks und TAB sauber ineinander.</p>
+          <div class="dl-meta">
+            <span>Best Practice</span>
+            <span>Vault-basiert</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="library-section" id="plugins">
+    <!-- TOOLBAR: search + filter -->
+    <div class="rsl-toolbar">
+      <label class="rsl-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="search" id="rslSearch" placeholder="Plugin oder Mod suchen… (z. B. Ranks, Crates, TNT)" autocomplete="off">
+      </label>
+      <div class="rsl-filters">
+        <button class="rsl-chip is-active" data-filter="all">Alle</button>
+        <button class="rsl-chip" data-filter="plugin">Plugins</button>
+        <button class="rsl-chip" data-filter="mod">Mods</button>
+      </div>
+      <span class="rsl-count" id="rslCount"></span>
+    </div>
+
+    <!-- empty state -->
+    <div class="rsl-empty" id="rslEmpty">
+      <strong>Nichts gefunden</strong>
+      <p>Keine Plugins oder Mods passen zu deiner Suche. Probier einen anderen Begriff oder setz den Filter zurueck.</p>
+    </div>
+
+    <!-- PLUGINS -->
+    <section class="library-section" id="plugins" data-section>
       <div class="category-heading">
-        <span class="logo-kicker">Kategorie 01</span>
+        <div class="section-kicker-row">
+          <span class="logo-kicker">Kategorie 01 · Server Plugins</span>
+          <span class="line"></span>
+        </div>
         <h2>RSL Plugins</h2>
-        <p>Paper/Spigot Plugins fuer Server-Systeme, TAB-Anzeige, Ranks, Economy und Join-Effekte.</p>
+        <p>Paper- und Spigot-Plugins fuer Ranks, Economy, Join-Effekte, Spawn, Navigation und Crates. Alle laufen auf 1.20.1 bis 1.21.x und arbeiten ueber Vault, TAB und PlaceholderAPI zusammen.</p>
       </div>
 
-      <article class="library-card" id="rslranks">
-        <div class="library-card-head">
-          <div>
-            <span>Plugin</span>
-            <h3>RSLRanks</h3>
-            <p>Rang- und Rechte-System fuer Paper/Spigot 1.20.1 bis 1.21.x mit Vault, TAB und PlaceholderAPI Support.</p>
-          </div>
-          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLRanks-1.0.0.jar" download>RSLRanks downloaden</a>
-        </div>
-        <div class="library-card-body">
-          <div class="doc-grid">
-            <section>
-              <h4>So funktioniert es</h4>
-              <p>RSLRanks speichert Spieler mit UUID, letztem Namen, Rang und Extra-Permissions. Beim Join bekommt der Spieler ein PermissionAttachment, das aus Rang, Vererbung und Extra-Rechten neu aufgebaut wird.</p>
-            </section>
-            <section>
-              <h4>Installation</h4>
-              <p>Jar in den Paper/Spigot `plugins` Ordner legen, Server starten, `config.yml` anpassen und danach `/rank reload` ausfuehren.</p>
-            </section>
-            <section>
-              <h4>Befehle</h4>
-              <p>`/rank help`, `/rank user &lt;spieler&gt; set &lt;rang&gt;`, `/rank reload`, `/rank tabconfig`.</p>
-            </section>
-            <section>
-              <h4>Permissions</h4>
-              <p>`rslranks.admin` gibt vollen Verwaltungszugriff. OP-Spieler koennen Raenge vergeben, wenn die Server-Regeln es erlauben.</p>
-            </section>
-            <section>
-              <h4>Arbeitet zusammen mit</h4>
-              <p>Vault fuer Gruppen und Prefixe, TAB fuer Tablisten-Sortierung, PlaceholderAPI fuer `%rslranks_rank%`, `%rslranks_prefix%`, `%rslranks_priority%` und `%rslranks_color%`.</p>
-            </section>
-            <section>
-              <h4>Wichtig fuer maximale Funktion</h4>
-              <p>Vault und TAB installieren, dann `/rank tabconfig` nutzen und die ausgegebene Gruppenreihenfolge in TAB uebernehmen.</p>
-            </section>
-          </div>
-          <div class="video-placeholder">
-            <span>VIDEO</span>
-            <strong>RSLRanks Tutorial kommt bald</strong>
-            <p>Platzhalter fuer ein Video zu Rang erstellen, Spieler setzen, TAB verbinden.</p>
-          </div>
-        </div>
-      </article>
+      <div class="rsl-card-stack">
 
-      <article class="library-card" id="rslbalance">
-        <div class="library-card-head">
-          <div>
-            <span>Plugin</span>
-            <h3>RSLBalance</h3>
-            <p>Eigenes Vault-Economy-Plugin fuer Kontostand, Admin-Economy und TAB Balance-Anzeige.</p>
+        <!-- RSLRanks -->
+        <article class="rsl-item" id="rslranks" data-type="plugin" data-searchable="rslranks rang rechte permission vault tab placeholderapi gruppen prefix">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">RK</div>
+            <div class="rsl-item-titles">
+              <h3>RSLRanks
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Rang- und Rechte-System mit Vault-, TAB- und PlaceholderAPI-Support, Prefixen, Vererbung und persistenten Spielerdaten.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">Ranks</span>
+                <span class="rsl-tag">Permissions</span>
+                <span class="rsl-tag">Vault</span>
+                <span class="rsl-tag">TAB</span>
+                <span class="rsl-tag">PlaceholderAPI</span>
+                <span class="rsl-tag">1.20.1 – 1.21.x</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLRanks-1.0.0.jar" download data-name="RSLRanks-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 36 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
           </div>
-          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLBalance-1.0.0.jar" download>RSLBalance downloaden</a>
-        </div>
-        <div class="library-card-body">
-          <div class="doc-grid">
-            <section>
-              <h4>So funktioniert es</h4>
-              <p>RSLBalance registriert eine Economy ueber Vault. Andere Plugins koennen dadurch Geldwerte lesen, setzen oder anzeigen, wenn sie Vault-Economy nutzen.</p>
-            </section>
-            <section>
-              <h4>Installation</h4>
-              <p>Vault zuerst installieren, dann RSLBalance in den `plugins` Ordner legen und Server starten.</p>
-            </section>
-            <section>
-              <h4>Befehle</h4>
-              <p>`/rslbalance`, `/rslbalance &lt;spieler&gt;`, `/rsleco set &lt;spieler&gt; &lt;betrag&gt;`, `/rsleco add`, `/rsleco take`, `/rsleco reload`.</p>
-            </section>
-            <section>
-              <h4>Permissions</h4>
-              <p>`rslbalance.admin` fuer Admin-Befehle. OPs bekommen die Admin-Rechte automatisch.</p>
-            </section>
-            <section>
-              <h4>Arbeitet zusammen mit</h4>
-              <p>Vault, TAB und PlaceholderAPI. TAB kann `%vault_eco_balance_formatted%` anzeigen; PlaceholderAPI kann `%rslbalance_balance%` und `%rslbalance_balance_formatted%` nutzen.</p>
-            </section>
-            <section>
-              <h4>Wichtig fuer maximale Funktion</h4>
-              <p>RSLBalance sollte die aktive Vault-Economy sein. Wenn ein anderes Economy-Plugin installiert ist, muss klar sein, welches Plugin Vault zuerst nutzt.</p>
-            </section>
-          </div>
-          <div class="video-placeholder">
-            <span>VIDEO</span>
-            <strong>RSLBalance Setup kommt bald</strong>
-            <p>Platzhalter fuer ein Video zu Vault, TAB Scoreboard und Geld-Befehlen.</p>
-          </div>
-        </div>
-      </article>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>Jeder Spieler wird mit UUID, letztem Namen, Rang und Extra-Permissions gespeichert. Beim Join baut RSLRanks ein PermissionAttachment aus Rang, Vererbung und zusaetzlichen Rechten frisch auf.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Jar in den <code class="inline">plugins</code> Ordner legen, Server starten, <code class="inline">config.yml</code> anpassen und mit <code class="inline">/rank reload</code> neu laden.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/rank help</code><span>Alle Befehle anzeigen</span></div>
+                  <div class="cmd"><code>/rank user &lt;spieler&gt; set &lt;rang&gt;</code><span>Rang setzen</span></div>
+                  <div class="cmd"><code>/rank reload</code><span>Config neu laden</span></div>
+                  <div class="cmd"><code>/rank tabconfig</code><span>TAB-Reihenfolge ausgeben</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslranks.admin</code> gibt vollen Verwaltungszugriff. OP-Spieler koennen Raenge vergeben, wenn die Server-Regeln es erlauben.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Vault (Gruppen &amp; Prefixe), TAB (Tablisten-Sortierung), PlaceholderAPI: <code class="inline">%rslranks_rank%</code>, <code class="inline">%rslranks_prefix%</code>, <code class="inline">%rslranks_priority%</code>, <code class="inline">%rslranks_color%</code>.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Fuer maximale Funktion</h4>
+                <p>Vault und TAB installieren, dann <code class="inline">/rank tabconfig</code> nutzen und die ausgegebene Gruppenreihenfolge in TAB uebernehmen.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLRanks Tutorial kommt bald</strong>
+              <p>Rang erstellen, Spieler setzen, Vault verbinden und die Tabliste sauber sortieren.</p>
+            </div>
+          </div></div></div>
+        </article>
 
-      <article class="library-card" id="rslwelcome">
-        <div class="library-card-head">
-          <div>
-            <span>Plugin</span>
-            <h3>RSLWelcome</h3>
-            <p>Animierte Join-Titles mit Sound, privater Willkommensnachricht und eigener Servername-Datei.</p>
+        <!-- RSLBalance -->
+        <article class="rsl-item" id="rslbalance" data-type="plugin" data-searchable="rslbalance economy geld vault balance konto money admin eco">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">€</div>
+            <div class="rsl-item-titles">
+              <h3>RSLBalance
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Eigene Vault-Economy fuer Kontostand, Admin-Geldbefehle und Balance-Anzeige in der Tabliste.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">Economy</span>
+                <span class="rsl-tag">Vault</span>
+                <span class="rsl-tag">TAB</span>
+                <span class="rsl-tag">PlaceholderAPI</span>
+                <span class="rsl-tag">Admin-Tools</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLBalance-1.0.0.jar" download data-name="RSLBalance-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 20 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
           </div>
-          <a class="enter-button" href="../../../downloads/rsl/plugins/RSLWelcome-1.0.0.jar" download>RSLWelcome downloaden</a>
-        </div>
-        <div class="library-card-body">
-          <div class="doc-grid">
-            <section>
-              <h4>So funktioniert es</h4>
-              <p>Beim Join startet nach kurzer Verzoegerung ein Title: erst WILLKOMMEN, danach wird der Spielername Buchstabe fuer Buchstabe geschrieben. Optional spielt das Plugin Sounds ab.</p>
-            </section>
-            <section>
-              <h4>Installation</h4>
-              <p>Jar in den `plugins` Ordner legen, Server starten und `plugins/RSLWelcome/config.yml` sowie `server-name.yml` anpassen.</p>
-            </section>
-            <section>
-              <h4>Befehle</h4>
-              <p>`/rslwelcome reload` laedt die Config neu. `/rslwelcome test` zeigt den Effekt fuer dich selbst.</p>
-            </section>
-            <section>
-              <h4>Permissions</h4>
-              <p>`rslwelcome.admin` erlaubt Reload und Test-Befehl. OPs haben diese Rechte automatisch.</p>
-            </section>
-            <section>
-              <h4>Arbeitet zusammen mit</h4>
-              <p>Laeuft alleine. Passt optisch zu TAB, RSLRanks, RSLBalance und dem NeyexSMP/Redstone-Labs Design.</p>
-            </section>
-            <section>
-              <h4>Wichtig fuer maximale Funktion</h4>
-              <p>Den Servernamen in `plugins/RSLWelcome/server-name.yml` fest eintragen, damit kein Hoster-Name aus der MOTD angezeigt wird.</p>
-            </section>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>RSLBalance registriert eine Economy ueber Vault. Andere Plugins koennen dadurch Geldwerte lesen, setzen oder anzeigen, sobald sie Vault-Economy nutzen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Zuerst Vault installieren, dann RSLBalance in den <code class="inline">plugins</code> Ordner legen und Server starten.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/rslbalance</code><span>Eigenen Kontostand</span></div>
+                  <div class="cmd"><code>/rslbalance &lt;spieler&gt;</code><span>Kontostand anderer</span></div>
+                  <div class="cmd"><code>/rsleco set &lt;spieler&gt; &lt;betrag&gt;</code><span>Betrag setzen</span></div>
+                  <div class="cmd"><code>/rsleco add · take</code><span>Geld geben / nehmen</span></div>
+                  <div class="cmd"><code>/rsleco reload</code><span>Neu laden</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslbalance.admin</code> fuer Admin-Befehle. OPs erhalten die Rechte automatisch.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Vault, TAB und PlaceholderAPI. TAB zeigt <code class="inline">%vault_eco_balance_formatted%</code>; PlaceholderAPI bietet <code class="inline">%rslbalance_balance%</code> und <code class="inline">%rslbalance_balance_formatted%</code>.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Fuer maximale Funktion</h4>
+                <p>RSLBalance sollte die aktive Vault-Economy sein. Bei mehreren Economy-Plugins muss klar sein, welches Vault zuerst belegt.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLBalance Setup kommt bald</strong>
+              <p>Vault verbinden, Balance in TAB anzeigen und Admin-Geldbefehle nutzen.</p>
+            </div>
+          </div></div></div>
+        </article>
+
+        <!-- RSLWelcome -->
+        <article class="rsl-item" id="rslwelcome" data-type="plugin" data-searchable="rslwelcome join title willkommen welcome sound servername nachricht effekt">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">JN</div>
+            <div class="rsl-item-titles">
+              <h3>RSLWelcome
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Animierte Join-Titles mit Schreibeffekt fuer den Spielernamen, Sound, privater Willkommensnachricht und eigener Servername-Datei.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">Join-Effekt</span>
+                <span class="rsl-tag">Title-Animation</span>
+                <span class="rsl-tag">Sound</span>
+                <span class="rsl-tag">Standalone</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLWelcome-1.0.0.jar" download data-name="RSLWelcome-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 16 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
           </div>
-          <div class="video-placeholder">
-            <span>VIDEO</span>
-            <strong>RSLWelcome Effekt kommt bald</strong>
-            <p>Platzhalter fuer ein Video zum Title, Sound und Servernamen.</p>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>Beim Join startet nach kurzer Verzoegerung ein Title: erst WILLKOMMEN, dann wird der Spielername Buchstabe fuer Buchstabe geschrieben. Optional spielt das Plugin Sounds ab.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Jar in <code class="inline">plugins</code> legen, Server starten und <code class="inline">RSLWelcome/config.yml</code> sowie <code class="inline">server-name.yml</code> anpassen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/rslwelcome reload</code><span>Config neu laden</span></div>
+                  <div class="cmd"><code>/rslwelcome test</code><span>Effekt selbst ansehen</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslwelcome.admin</code> erlaubt Reload und Test. OPs haben die Rechte automatisch.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Laeuft allein. Passt optisch zu TAB, RSLRanks, RSLBalance und dem Redstone-Labs Design.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Fuer maximale Funktion</h4>
+                <p>Servernamen in <code class="inline">server-name.yml</code> fest eintragen, damit kein Hoster-Name aus der MOTD erscheint.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLWelcome Effekt kommt bald</strong>
+              <p>Title-Animation, Schreibeffekt, Sound und eigener Servername in Aktion.</p>
+            </div>
+          </div></div></div>
+        </article>
+
+        <!-- RSLSpawn -->
+        <article class="rsl-item" id="rslspawn" data-type="plugin" data-searchable="rslspawn spawn join welt multiverse teleport position">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">SP</div>
+            <div class="rsl-item-titles">
+              <h3>RSLSpawn
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Fester Join-Spawn mit eigenem <code class="inline">/spawn</code> Befehl und optionalem Multiverse-Core Support.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">Spawn</span>
+                <span class="rsl-tag">Join-Teleport</span>
+                <span class="rsl-tag">Multiverse optional</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLSpawn-1.0.0.jar" download data-name="RSLSpawn-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 8 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
           </div>
-        </div>
-      </article>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>RSLSpawn speichert Welt, Position, Blickrichtung und Pitch. Spieler nutzen <code class="inline">/spawn</code>, und beim Join kann der feste Spawn automatisch greifen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Jar in <code class="inline">plugins</code> legen, Server starten, in die Spawn-Welt gehen und <code class="inline">/rslspawn set</code> ausfuehren.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/spawn</code><span>Zum Spawn</span></div>
+                  <div class="cmd"><code>/rslspawn set</code><span>Spawn setzen</span></div>
+                  <div class="cmd"><code>/rslspawn setworld &lt;welt&gt;</code><span>Spawn-Welt setzen</span></div>
+                  <div class="cmd"><code>/rslspawn tp · status · reload</code><span>Verwaltung</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslspawn.spawn</code> (Standard fuer alle), <code class="inline">rslspawn.admin</code> (Setzen &amp; Reload), <code class="inline">rslspawn.tp</code> fuer <code class="inline">/rslspawn tp</code>.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Multiverse-Core optional. Hat MV eine Spawn-Welt geladen, nutzt RSLSpawn einfach den gespeicherten Welt-Namen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Fuer maximale Funktion</h4>
+                <p>Die Spawn-Welt muss beim Join geladen sein. Bei Multiverse zuerst Welt laden, dann <code class="inline">/rslspawn set</code> oder <code class="inline">/rslspawn setworld spawn</code>.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLSpawn + /spawn kommt bald</strong>
+              <p>Spawn setzen, fester Join-Spawn und Multiverse-Welt Setup.</p>
+            </div>
+          </div></div></div>
+        </article>
+
+        <!-- RSLNavigator -->
+        <article class="rsl-item" id="rslnavigator" data-type="plugin" data-searchable="rslnavigator navigator gui menue item designer command browser teleport warp menu wizard">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">NV</div>
+            <div class="rsl-item-titles">
+              <h3>RSLNavigator
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge gold">Flaggschiff</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Kompletter Server-Navigator: Chat-Trigger, Untermenue-Wizard, voller Item- und Schrift-Designer, Command-Browser und fertige Command-Layouts.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">GUI-Editor</span>
+                <span class="rsl-tag">Item-Designer</span>
+                <span class="rsl-tag">Command-Browser</span>
+                <span class="rsl-tag">Untermenues</span>
+                <span class="rsl-tag">No-Config moeglich</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLNavigator-1.0.0.jar" download data-name="RSLNavigator-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 80 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>Spieler schreiben <code class="inline">.</code> im Chat oder nutzen <code class="inline">/.</code> — das Navigator-GUI oeffnet sich. Admins bauen Menues, Items, Untermenues und Commands direkt im Editor; Items kommen aus Kategorien, Namen und Lore werden per GUI gestaltet.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Jar in <code class="inline">plugins</code> legen, Server starten und mit <code class="inline">/rslnav admin</code> den Editor oeffnen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/rslnav admin</code><span>Admin-GUI</span></div>
+                  <div class="cmd"><code>/rslnav edit main</code><span>Hauptmenue bearbeiten</span></div>
+                  <div class="cmd"><code>/rslnav open [menu]</code><span>Menue oeffnen</span></div>
+                  <div class="cmd"><code>/rslnav save · reload</code><span>Speichern / neu laden</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslnavigator.open</code> fuer Spieler, <code class="inline">rslnavigator.admin</code> fuer Editor und alle Verwaltungsbefehle.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Multiverse-Core optional fuer Welt-Navigation per <code class="inline">/mvtp</code>. Verbindbar mit Spawn-, Shop-, Warp- und anderen Plugins per Befehl.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Fuer maximale Funktion</h4>
+                <p>Fast alles laeuft ohne Config-Datei. Der Item-Designer bietet Minecraft-Farben, Styles, Hex-Codes, RSL-Presets und Gold-Gradient. Bekannte Commands (teleport, give, gamemode, effect, mvtp, spawn, warp/home, msg) bekommen passende Layouts.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLNavigator Item-Designer &amp; Command-Layouts</strong>
+              <p>Material-Browser, Schrift-Designer, Untermenue-Wizard, Command-Browser und Amboss-Freitext.</p>
+            </div>
+          </div></div></div>
+        </article>
+
+        <!-- RSLCrates -->
+        <article class="rsl-item" id="rslcrates" data-type="plugin" data-searchable="rslcrates crate key lootbox animation reward jackpot vault belohnung gui mystery">
+          <div class="rsl-item-head">
+            <div class="rsl-icon">CR</div>
+            <div class="rsl-item-titles">
+              <h3>RSLCrates
+                <span class="badge red ver">v1.0.0</span>
+                <span class="badge violet">17 Animationen</span>
+                <span class="badge">Paper / Spigot</span>
+              </h3>
+              <p class="tagline">Crate-Key-Plugin mit GUI-Baukasten, 12 Varianten, 17 Mega-Animationen, Effekt-Staerken, Overlap-Schutz und Name-Designer.</p>
+              <div class="rsl-tags">
+                <span class="rsl-tag">Crates / Keys</span>
+                <span class="rsl-tag">GUI-Baukasten</span>
+                <span class="rsl-tag">Animationen</span>
+                <span class="rsl-tag">Vault optional</span>
+                <span class="rsl-tag">Rewards</span>
+              </div>
+            </div>
+            <div class="rsl-item-cta">
+              <a class="btn-download" href="../../../downloads/rsl/plugins/RSLCrates-1.0.0.jar" download data-name="RSLCrates-1.0.0.jar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download · 84 KB
+              </a>
+              <button class="btn-toggle" type="button">Details
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="rsl-item-body"><div><div class="rsl-body-inner">
+            <div class="doc-grid">
+              <div class="doc-cell">
+                <h4><span class="dot"></span>So funktioniert es</h4>
+                <p>Admins schauen auf einen Block und erstellen daraus mit <code class="inline">/rslcrates create &lt;id&gt;</code> eine Crate. Doppelte Crates auf demselben Block werden blockiert; Loeschen und Name-Design laufen ueber GUI.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Installation</h4>
+                <p>Jar in <code class="inline">plugins</code> legen. Fuer Geld-Oeffnung zusaetzlich Vault plus RSLBalance (oder andere Vault-Economy) nutzen.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Befehle</h4>
+                <div class="cmd-list">
+                  <div class="cmd"><code>/rslcrates admin</code><span>GUI-Baukasten</span></div>
+                  <div class="cmd"><code>/rslcrates create &lt;id&gt;</code><span>Crate erstellen</span></div>
+                  <div class="cmd"><code>/rslcrates edit &lt;id&gt;</code><span>Crate bearbeiten</span></div>
+                  <div class="cmd"><code>/rslcrates key give &lt;spieler&gt; &lt;crate&gt; [n]</code><span>Keys vergeben</span></div>
+                  <div class="cmd"><code>/rslcrates reload · save</code><span>Verwaltung</span></div>
+                </div>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Permissions</h4>
+                <p><code class="inline">rslcrates.open</code> (Spieler), <code class="inline">rslcrates.admin</code> (Baukasten), <code class="inline">rslcrates.key.give</code> (Key-Ausgabe).</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Arbeitet zusammen mit</h4>
+                <p>Vault &amp; RSLBalance fuer Preise, Paid-Crates, Jackpot-Geld, Streak-Bonus und Money-Rewards. Ohne Economy laufen Key-/Free-Crates und Item-/Command-/Message-Rewards weiter.</p>
+              </div>
+              <div class="doc-cell">
+                <h4><span class="dot"></span>Varianten &amp; Effekte</h4>
+                <p><strong>12 Varianten:</strong> KEY, PAID, KEY_OR_PAID, FREE, TIMED, PREVIEW, MYSTERY, EVENT, VIP, JACKPOT, STREAK, LEVEL. <strong>Effekt-Staerke:</strong> CALM, NORMAL, EPIC.</p>
+              </div>
+            </div>
+            <div class="video-placeholder">
+              <span class="tag">VIDEO</span>
+              <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+              <strong>RSLCrates Mega-Animationen</strong>
+              <p>Rainbow Roll, Firework Burst, Lightning Strike, Dragon Spin, Beacon Beam, Ender Portal, Lucky Wheel, Meteor Drop, Gold Rush, Soul Storm, Redstone Overload &amp; Final Reveal.</p>
+            </div>
+          </div></div></div>
+        </article>
+
+      </div>
     </section>
 
-    <section class="library-section" id="mods">
+    <!-- MODS -->
+    <section class="library-section" id="mods" data-section>
       <div class="category-heading">
-        <span class="logo-kicker">Kategorie 02</span>
+        <div class="section-kicker-row">
+          <span class="logo-kicker">Kategorie 02 · Client &amp; Server Mods</span>
+          <span class="line"></span>
+        </div>
         <h2>RSL Mods</h2>
-        <p>Vorbereitete Mod-Galerie fuer Redstone-Labs und Jaro-Projekte. Downloads sind nur aktiv, wenn eine fertige Jar eindeutig vorhanden ist.</p>
+        <p>Fabric- und Forge-Mods aus dem Redstone-Labs Umfeld. Downloads sind nur aktiv, wenn eine fertige Jar eindeutig vorhanden ist.</p>
       </div>
-      <div class="mod-gallery">
-        <article>
-          <span>Forge</span>
+      <div class="mod-grid">
+
+        <article class="mod-card" data-type="mod" data-searchable="jaro tnt mayhem explosion lucky forge sprengstoff building">
+          <div class="mod-top">
+            <span class="badge red">Forge</span>
+            <span class="badge ver">v1.0.0</span>
+          </div>
           <h3>Jaro TNT Mayhem</h3>
-          <p>Lucky-artige TNTs, Spezialeffekte, Building TNTs und starke Explosionen fuer das Minecraft Escape Profil.</p>
-          <a href="../../../downloads/rsl/mods/jaro_tnt_mayhem-1.0.0.jar" download>Mod downloaden</a>
+          <p>Lucky-artige TNTs, Spezialeffekte, Building-TNTs und kraftvolle Explosionen — gebaut fuer das Minecraft-Escape-Profil und chaotische Runden.</p>
+          <div class="mod-foot">
+            <span class="mod-size">JAR · 120 KB</span>
+            <a class="btn-download" style="min-height:42px;padding:0 16px" href="../../../downloads/rsl/mods/jaro_tnt_mayhem-1.0.0.jar" download data-name="jaro_tnt_mayhem-1.0.0.jar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>
         </article>
-        <article>
-          <span>Forge</span>
+
+        <article class="mod-card" data-type="mod" data-searchable="varkonia powers power system items crafting forge faehigkeiten">
+          <div class="mod-top">
+            <span class="badge red">Forge</span>
+            <span class="badge ver">v1.0.47</span>
+          </div>
           <h3>Varkonia Powers</h3>
-          <p>Power-System mit Items, Crafting und Server-Kompatibilitaet. Verlinkt ist die neueste gefundene Version.</p>
-          <a href="../../../downloads/rsl/mods/varkonia_powers-1.0.47.jar" download>Mod downloaden</a>
+          <p>Power-System mit eigenen Items, Crafting-Rezepten und Server-Kompatibilitaet. Verlinkt ist die neueste gefundene Version.</p>
+          <div class="mod-foot">
+            <span class="mod-size">JAR · 664 KB</span>
+            <a class="btn-download" style="min-height:42px;padding:0 16px" href="../../../downloads/rsl/mods/varkonia_powers-1.0.47.jar" download data-name="varkonia_powers-1.0.47.jar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>
         </article>
-        <article>
-          <span>Fabric</span>
-          <h3>Redstone Labs Timeline Bridge</h3>
-          <p>Companion-Mod fuer das Datapack Timeline Studio und Live-Tests direkt aus Redstone Labs.</p>
-          <a href="../../../downloads/rsl/mods/redstone-labs-timeline-bridge-0.1.0.jar" download>Mod downloaden</a>
+
+        <article class="mod-card" data-type="mod" data-searchable="redstone labs timeline bridge fabric datapack studio companion live test">
+          <div class="mod-top">
+            <span class="badge violet">Fabric</span>
+            <span class="badge ver">v0.1.0</span>
+          </div>
+          <h3>RSL Timeline Bridge</h3>
+          <p>Companion-Mod fuer das Datapack Timeline Studio. Ermoeglicht Live-Tests direkt aus Redstone Labs heraus.</p>
+          <div class="mod-foot">
+            <span class="mod-size">JAR · 28 KB</span>
+            <a class="btn-download" style="min-height:42px;padding:0 16px;background:linear-gradient(90deg,rgba(139,92,246,.85),rgba(79,244,207,.6));border-color:rgba(139,92,246,.5);box-shadow:0 12px 30px -14px rgba(139,92,246,.8)" href="../../../downloads/rsl/mods/redstone-labs-timeline-bridge-0.1.0.jar" download data-name="redstone-labs-timeline-bridge-0.1.0.jar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>
         </article>
-        <article>
-          <span>Fabric</span>
-          <h3>Redstone Labs Programming</h3>
+
+        <article class="mod-card" data-type="mod" data-searchable="redstone labs programming skript automation fabric code labor">
+          <div class="mod-top">
+            <span class="badge violet">Fabric</span>
+            <span class="badge ver">v0.1.0</span>
+          </div>
+          <h3>RSL Programming</h3>
           <p>Programmier- und Skript-Labor fuer Redstone-Labs Experimente und eigene Minecraft-Automation.</p>
-          <a href="../../../downloads/rsl/mods/redstone-labs-programming-0.1.0.jar" download>Mod downloaden</a>
+          <div class="mod-foot">
+            <span class="mod-size">JAR · 52 KB</span>
+            <a class="btn-download" style="min-height:42px;padding:0 16px;background:linear-gradient(90deg,rgba(139,92,246,.85),rgba(79,244,207,.6));border-color:rgba(139,92,246,.5);box-shadow:0 12px 30px -14px rgba(139,92,246,.8)" href="../../../downloads/rsl/mods/redstone-labs-programming-0.1.0.jar" download data-name="redstone-labs-programming-0.1.0.jar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download
+            </a>
+          </div>
         </article>
-        <article>
-          <span>Geplant</span>
+
+        <article class="mod-card soon" data-type="mod" data-searchable="mehr rsl mods geplant kommt bald zukunft">
+          <div class="mod-top">
+            <span class="badge gold">Geplant</span>
+          </div>
           <h3>Mehr RSL Mods</h3>
-          <p>Weitere Mods koennen spaeter mit eigener Doku, Video und Download ergaenzt werden.</p>
-          <strong>Kommt bald</strong>
+          <p>Weitere Mods folgen mit eigener Doku, Video und Download — sobald sie fertig sind.</p>
+          <div class="soon-tag">Kommt bald</div>
         </article>
+
       </div>
     </section>
   </main>
+
+  <!-- floating UI -->
+  <button class="to-top" id="toTop" type="button" aria-label="Nach oben">
+    <svg viewBox="0 0 24 24"><path d="M12 4l8 8h-5v8h-6v-8H4z"/></svg>
+  </button>
+  <div class="rsl-toast" id="rslToast">
+    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    <span id="rslToastText">Download gestartet</span>
+  </div>
+
+  <script src="library.js"></script>
 </body>
 </html>
