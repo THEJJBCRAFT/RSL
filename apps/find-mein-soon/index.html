@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Find Mein Soon</title>
+  <meta name="description" content="Find Mein Soon: Familie und Freunde live auf der Karte finden, Standort teilen, Treffpunkt setzen und mit einem Tipp Hilfe rufen.">
+  <meta name="theme-color" content="#05070b">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Find Mein Soon">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <div class="brand">
+        <img src="icons/icon-192.png" alt="" width="36" height="36">
+        <div>
+          <strong>Find Mein Soon</strong>
+          <span id="topbarSub">Familie & Freunde finden</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span class="net-dot" id="netDot" title="Verbindung"></span>
+        <button type="button" class="icon-button" id="menuButton" aria-label="Menue">&#9776;</button>
+      </div>
+    </header>
+
+    <section class="view setup-view" id="setupView">
+      <div class="setup-hero">
+        <img src="icons/icon-192.png" alt="Find Mein Soon Logo" width="96" height="96">
+        <h1>Find Mein Soon</h1>
+        <p>Erstelle eine Gruppe, teile den Code mit deiner Familie oder deinen Freunden und seht euch live auf der Karte.</p>
+      </div>
+
+      <form class="card" id="setupForm">
+        <label>
+          <span>Dein Name</span>
+          <input type="text" id="setupName" maxlength="40" autocomplete="nickname" placeholder="z. B. Jaro" required>
+        </label>
+
+        <div class="segmented" role="tablist">
+          <button type="button" class="is-active" data-mode="create" role="tab">Neue Gruppe</button>
+          <button type="button" data-mode="join" role="tab">Code eingeben</button>
+        </div>
+
+        <label id="groupNameField">
+          <span>Gruppenname</span>
+          <input type="text" id="setupGroupName" maxlength="40" placeholder="z. B. Familie">
+        </label>
+
+        <label id="codeField" hidden>
+          <span>Gruppencode</span>
+          <input type="text" id="setupCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC123" class="code-input">
+        </label>
+
+        <p class="form-error" id="setupError" hidden></p>
+        <button type="submit" class="primary-button" id="setupSubmit">Gruppe erstellen</button>
+      </form>
+
+      <div class="card hint-card" id="installCard" hidden>
+        <strong>Als App installieren</strong>
+        <p id="installHint">Lege Find Mein Soon auf deinen Startbildschirm, dann startet es wie eine richtige App.</p>
+        <button type="button" class="ghost-button" id="installButton" hidden>Jetzt installieren</button>
+      </div>
+
+      <div class="card hint-card" id="apkCard" hidden>
+        <strong>Android-App (APK)</strong>
+        <p>Fuer Android gibt es Find Mein Soon auch als APK-Datei. Herunterladen, oeffnen und die Installation aus unbekannten Quellen erlauben.</p>
+        <a class="ghost-button link-button" href="https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk" rel="noopener">APK herunterladen</a>
+      </div>
+
+      <div class="card hint-card">
+        <strong>So funktioniert es</strong>
+        <ol>
+          <li>Gruppe erstellen und Code an alle schicken.</li>
+          <li>Jeder tippt seinen Namen und den Code ein.</li>
+          <li>Standort freigeben. Alle sehen sich auf der Karte.</li>
+          <li>Verloren? "Finde mich!" druecken. Alle bekommen Alarm.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="view main-view" id="mainView" hidden>
+      <div class="alert-banner" id="alertBanner" hidden>
+        <div>
+          <strong id="alertTitle">Jemand braucht Hilfe</strong>
+          <span id="alertText"></span>
+        </div>
+        <button type="button" class="alert-nav" id="alertNavigate">Route</button>
+      </div>
+
+      <div class="map-wrap">
+        <div id="map" class="map"></div>
+        <div class="map-fallback" id="mapFallback" hidden>
+          <p>Karte konnte nicht geladen werden. Die Liste unten funktioniert trotzdem.</p>
+        </div>
+        <div class="map-controls">
+          <button type="button" class="map-button" id="centerButton" title="Auf mich zentrieren">&#9673;</button>
+          <button type="button" class="map-button" id="fitButton" title="Alle anzeigen">&#9635;</button>
+        </div>
+        <div class="pick-hint" id="pickHint" hidden>
+          Tippe auf die Karte, um den Treffpunkt zu setzen.
+          <button type="button" id="pickCancel">Abbrechen</button>
+        </div>
+        <div class="geo-status" id="geoStatus">Standort wird gesucht ...</div>
+      </div>
+
+      <div class="sheet" id="sheet">
+        <div class="sheet-handle" id="sheetHandle"></div>
+        <div class="group-line">
+          <div>
+            <strong id="groupName">Gruppe</strong>
+            <span>Code: <code id="groupCode">------</code></span>
+          </div>
+          <button type="button" class="ghost-button small" id="shareButton">Code teilen</button>
+        </div>
+
+        <div class="action-row">
+          <button type="button" class="sos-button" id="sosButton">
+            <span class="sos-icon">!</span>
+            <span class="sos-label">Finde mich!</span>
+          </button>
+          <button type="button" class="toggle-button is-on" id="shareToggle">
+            <span class="toggle-title">Standort teilen</span>
+            <span class="toggle-state">AN</span>
+          </button>
+          <button type="button" class="toggle-button" id="meetingButton">
+            <span class="toggle-title">Treffpunkt</span>
+            <span class="toggle-state" id="meetingState">setzen</span>
+          </button>
+        </div>
+
+        <div class="meeting-line" id="meetingLine" hidden>
+          <span id="meetingLabel"></span>
+          <div>
+            <button type="button" class="ghost-button small" id="meetingNavigate">Route</button>
+            <button type="button" class="ghost-button small" id="meetingClear">Entfernen</button>
+          </div>
+        </div>
+
+        <ul class="member-list" id="memberList"></ul>
+      </div>
+    </section>
+
+    <div class="menu" id="menu" hidden>
+      <div class="menu-panel">
+        <h2>Find Mein Soon</h2>
+        <p id="menuInfo"></p>
+        <button type="button" class="ghost-button" id="menuInstall" hidden>Als App installieren</button>
+        <button type="button" class="ghost-button" id="menuServer" hidden>Server-Adresse aendern</button>
+        <button type="button" class="ghost-button" id="menuRename">Namen aendern</button>
+        <button type="button" class="ghost-button" id="menuPrivacy">Datenschutz</button>
+        <button type="button" class="ghost-button danger" id="menuLeave">Gruppe verlassen</button>
+        <a class="ghost-button link-button" href="../../index.html">Zur JARO & DELTA Website</a>
+        <button type="button" class="primary-button" id="menuClose">Schliessen</button>
+      </div>
+    </div>
+
+    <div class="menu" id="privacy" hidden>
+      <div class="menu-panel">
+        <h2>Datenschutz</h2>
+        <p>Dein Standort wird nur an den Find-Mein-Soon-Server dieser Website gesendet und nur den Mitgliedern deiner Gruppe angezeigt. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
+        <p>Karten werden von OpenStreetMap geladen. Dabei erhaelt OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
+        <p>Gruppen ohne Aktivitaet werden nach 30 Tagen automatisch geloescht. Mit "Gruppe verlassen" wird dein Eintrag sofort entfernt.</p>
+        <button type="button" class="primary-button" id="privacyClose">Verstanden</button>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+  </div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -32,6 +32,64 @@ CC3 Music:
   - Cover: `uploads/covers/`
   - Datenbank: `data/tracks.json`
 
+## Find Mein Soon (Handy-App)
+
+Find Mein Soon ist eine installierbare Web-App (PWA) zum Finden von Familie und Freunden:
+
+- App: `apps/find-mein-soon/index.html`
+- Auf dem Handy oeffnen und "Zum Startbildschirm hinzufuegen" waehlen, dann startet sie wie eine normale App.
+- Funktionen: Gruppe erstellen, Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration und Ton, Standort pausieren.
+- Daten: `data/finder.json` (Gruppen werden nach 30 Tagen ohne Aktivitaet geloescht)
+- API: `/api/finder/groups`, `/api/finder/join`, `/api/finder/groups/<CODE>/...`
+- Icons neu erzeugen: `npm run icons:find-mein-soon`
+- Karte: Leaflet 1.9.4 liegt lokal in `apps/find-mein-soon/vendor/leaflet/` (BSD-Lizenz), Kartenkacheln kommen von OpenStreetMap.
+
+Wichtig: Standortfreigabe funktioniert im Browser nur ueber HTTPS oder `localhost`. Auf Render ist HTTPS automatisch aktiv.
+
+### Android-App (APK)
+
+Die Web-App gibt es zusaetzlich als echte Android-App. Sie liegt als Quellcode in `android/find-mein-soon/` und wird von GitHub automatisch gebaut.
+
+- Download der fertigen APK: `https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk`
+- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben.
+- Die App laedt die Web-App von der Website und braucht deshalb Internet. Standort, Vibration und Karten-Links (Google Maps) werden nativ durchgereicht.
+- Standort-Updates laufen weiter, solange die App geoeffnet oder im Hintergrund am Leben ist. Android kann Hintergrund-Apps aber jederzeit einschlafen lassen; zuverlaessig ist das Teilen nur mit geoeffneter App.
+- Einladungslinks (`…/apps/find-mein-soon/?join=CODE`) oeffnen sich in der App, sobald man das ab Android 12 einmalig erlaubt: App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen".
+
+So wird die APK gebaut:
+
+1. Auf GitHub unter `Actions` den Workflow `Find Mein Soon APK` oeffnen und `Run workflow` klicken (oder auf `main` pushen, wenn sich etwas unter `android/find-mein-soon/` aendert).
+2. Nach ein bis zwei Minuten liegt die APK unter `Releases` (Tag `find-mein-soon-latest`) und als Artefakt am Workflow-Lauf. Pushes auf andere Branches erzeugen nur das Artefakt.
+
+Einstellungen auf GitHub (Settings -> Secrets and variables -> Actions):
+
+- Variable `FMS_APP_URL`: Adresse der Web-App, z. B. `https://deine-domain.de/apps/find-mein-soon/`. Ohne Variable wird `https://jaro-delta-site.onrender.com/apps/find-mein-soon/` eingebaut. Die Adresse laesst sich auch in der App selbst aendern (Menue -> "Server-Adresse aendern" oder auf dem Fehlerbildschirm).
+- Optional fuer Updates ohne Deinstallation: ein eigener Signatur-Schluessel. Ohne ihn wird bei jedem Build ein neuer Schluessel erzeugt, und Android verlangt vor einem Update die Deinstallation der alten Version.
+
+Eigenen Signatur-Schluessel einmalig erzeugen und als Secrets hinterlegen (am besten ausserhalb des Repository-Ordners, z. B. im Home-Verzeichnis; JDK 17 oder neuer):
+
+```
+cd ~
+keytool -genkeypair -v -keystore findmeinsoon.keystore -storetype PKCS12 -alias findmeinsoon -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 findmeinsoon.keystore > findmeinsoon.keystore.b64
+```
+
+- Secret `ANDROID_KEYSTORE_BASE64`: Inhalt von `findmeinsoon.keystore.b64`
+- Secret `ANDROID_KEYSTORE_PASSWORD`: das bei keytool vergebene Passwort
+- Secret `ANDROID_KEY_ALIAS`: `findmeinsoon`
+- Secret `ANDROID_KEY_PASSWORD`: dasselbe Passwort wie `ANDROID_KEYSTORE_PASSWORD` (PKCS12-Keystores haben nur ein Passwort; das Secret kann auch weggelassen werden, dann wird automatisch das Keystore-Passwort genommen)
+
+Die Keystore-Datei gut aufbewahren. Sie darf nie ins Repository: `.gitignore` blockiert `*.keystore`, `*.jks` und `*.b64` im ganzen Projekt, trotzdem lieber ausserhalb des Ordners erzeugen.
+
+Lokal bauen (Android SDK und JDK 17 noetig; Gradle kommt ueber den mitgelieferten Wrapper, es muss nichts extra installiert werden):
+
+```
+cd android/find-mein-soon
+./gradlew assembleRelease -PappUrl=https://deine-domain.de/apps/find-mein-soon/
+```
+
+Unter Windows `gradlew.bat` statt `./gradlew`. In Android Studio laesst sich der Ordner `android/find-mein-soon` direkt als Projekt oeffnen.
+
 Wichtig:
 
 Impressum und Datenschutz enthalten Platzhalter. Vor einer echten Veroeffentlichung muessen dort echte Kontaktdaten, Verantwortliche, Dienste, Downloads und Datenschutzangaben eingetragen und geprueft werden.

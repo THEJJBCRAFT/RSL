@@ -1,0 +1,66 @@
+plugins {
+    id "com.android.application"
+}
+
+// Alle Werte lassen sich beim Bauen ueberschreiben, z. B.:
+//   gradle assembleRelease -PappUrl=https://deine-domain/apps/find-mein-soon/ -PversionCode=42
+def appUrl = (findProperty("appUrl") ?: "https://jaro-delta-site.onrender.com/apps/find-mein-soon/").toString().trim()
+def appHost = new URI(appUrl).host ?: "jaro-delta-site.onrender.com"
+def buildNumber = (findProperty("versionCode") ?: "1").toString().toInteger()
+def buildName = (findProperty("versionName") ?: "1.0.${buildNumber}").toString()
+def keystorePath = findProperty("keystoreFile")?.toString()
+def hasReleaseKeystore = keystorePath && file(keystorePath).exists()
+
+android {
+    namespace "de.redstonelabs.findmeinsoon"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "de.redstonelabs.findmeinsoon"
+        minSdk 24
+        targetSdk 35
+        versionCode buildNumber
+        versionName buildName
+        buildConfigField "String", "APP_URL", "\"${appUrl}\""
+        manifestPlaceholders = [appHost: appHost]
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile file(keystorePath)
+                storePassword findProperty("keystorePassword")?.toString()
+                keyAlias findProperty("keyAlias")?.toString()
+                // PKCS12-Keystores (Standard von keytool seit JDK 9) kennen kein eigenes Schluessel-Passwort.
+                keyPassword (findProperty("keyPassword") ?: findProperty("keystorePassword"))?.toString()
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // Ohne eigenen Keystore wird mit dem Debug-Schluessel signiert, damit die APK trotzdem installierbar ist.
+            signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}

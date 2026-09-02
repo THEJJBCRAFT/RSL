@@ -6,3 +6,16 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+data/finder.json
+
+# Android (Find Mein Soon APK)
+android/**/build/
+android/**/.gradle/
+android/**/.idea/
+android/**/local.properties
+
+# Signatur-Schluessel duerfen nie ins Repository
+*.keystore
+*.jks
+*.keystore.b64
+*.b64
