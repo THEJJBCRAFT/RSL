@@ -38,7 +38,7 @@ Find Mein Soon ist eine App zum Finden von Familie und Freunden. Sie laeuft komp
 
 - Web-App (PWA): `apps/find-mein-soon/index.html`, laeuft auch direkt von GitHub Pages
 - Android-App (APK): `android/find-mein-soon/`, enthaelt die Web-App komplett, Download siehe unten
-- Funktionen: Gruppe erstellen, 8-stelligen Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration und Ton, Standort pausieren.
+- Funktionen: Gruppe erstellen, 8-stelligen Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration, Ton und Benachrichtigung, Rueckmeldung "Ich komme", Standort pausieren, Verbindungsanzeige mit automatischem Broker-Wechsel.
 
 So funktioniert es ohne Server: Aus dem Gruppencode werden auf jedem Handy ein Verschluesselungsschluessel (AES-256, PBKDF2) und eine Themen-ID abgeleitet. Jedes Mitglied schickt seinen verschluesselten Standort als "retained" Nachricht an einen oeffentlichen, kostenlosen MQTT-Broker (`broker.hivemq.com`, Ersatz: `broker.emqx.io`, `test.mosquitto.org`). Der Broker speichert nur den letzten Stand jedes Mitglieds und kann die Daten nicht lesen; entschluesseln kann nur, wer den Gruppencode kennt. Ein eigener Broker laesst sich ueber `?broker=wss://…` an der App-Adresse eintragen (wird gespeichert).
 
@@ -56,8 +56,9 @@ Die APK wird von GitHub automatisch gebaut und enthaelt die Web-App als Assets. 
 
 - Download der fertigen APK: `https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk`
 - Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben. Beim ersten Start die Standort-Berechtigung erlauben.
-- Standort-Updates laufen weiter, solange die App geoeffnet oder im Hintergrund am Leben ist. Android kann Hintergrund-Apps aber jederzeit einschlafen lassen; zuverlaessig ist das Teilen nur mit geoeffneter App.
-- Einladungslinks (`…/apps/find-mein-soon/?join=CODE`) oeffnen sich in der App, sobald man das ab Android 12 einmalig erlaubt: App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen".
+- Solange "Standort teilen" an ist, laeuft ein Vordergrund-Dienst mit dauerhafter Benachrichtigung ("Standort wird geteilt"). Der Standort wird damit auch bei ausgeschaltetem Bildschirm oder im Hintergrund weitergeschickt; ueber die Benachrichtigung laesst sich das Teilen stoppen. Einige Hersteller (z. B. Xiaomi, Huawei) beenden Hintergrund-Dienste trotzdem, wenn die App nicht von der Akku-Optimierung ausgenommen ist.
+- Ein "Finde mich!"-Alarm erscheint in der App als Alarm-Benachrichtigung mit Ton und Vibration, auch wenn die App gerade im Hintergrund ist.
+- Einladungslinks (`…/apps/find-mein-soon/#join=CODE`) oeffnen sich in der App, sobald man das ab Android 12 einmalig erlaubt: App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen".
 
 So wird die APK gebaut:
 

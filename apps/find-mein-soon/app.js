@@ -30,6 +30,10 @@
   // iPads ab iPadOS 13 melden sich als Mac, sind aber an den Touchpunkten erkennbar.
   const isIos = (/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) && !window.MSStream;
   const isAndroid = /Android/i.test(navigator.userAgent);
+  // Bruecke zur Android-App (Vordergrund-Dienst, Benachrichtigungen, Teilen). Im Browser nicht vorhanden.
+  const nativeBridge = typeof window.FindMeinSoonNative === "object" && window.FindMeinSoonNative ? window.FindMeinSoonNative : null;
+  const NOTIFY_DISMISS_KEY = "findMeinSoon.notifyDismissed";
+  const DEFAULT_ALERT_MESSAGE = "Ich finde euch nicht. Bitte kommt zu mir!";
 
   const $ = id => document.getElementById(id);
   const el = {
@@ -79,6 +83,20 @@
     setupForce: $("setupForce"),
     menuReconnect: $("menuReconnect"),
     alertMute: $("alertMute"),
+    alertRespond: $("alertRespond"),
+    ownAlert: $("ownAlert"),
+    ownAlertText: $("ownAlertText"),
+    ownAlertMessage: $("ownAlertMessage"),
+    ownAlertEnd: $("ownAlertEnd"),
+    notifyCard: $("notifyCard"),
+    notifyAllow: $("notifyAllow"),
+    notifyLater: $("notifyLater"),
+    dialog: $("dialog"),
+    dialogTitle: $("dialogTitle"),
+    dialogText: $("dialogText"),
+    dialogInput: $("dialogInput"),
+    dialogOk: $("dialogOk"),
+    dialogCancel: $("dialogCancel"),
     shareButton: $("shareButton"),
     sosButton: $("sosButton"),
     shareToggle: $("shareToggle"),
@@ -116,7 +134,9 @@
     toastTimer: null,
     alert: null,
     pendingSession: null,
-    leaving: false
+    leaving: false,
+    responding: null,
+    dialogResolve: null
   };
 
   // Verbindung zur Gruppe (serverlos ueber einen oeffentlichen MQTT-Broker).
@@ -135,8 +155,12 @@
     probeTimer: null,
     lastAck: 0,
     failReason: "",
-    resyncTimer: null
+    resyncTimer: null,
+    generation: 0,
+    probing: false,
+    lastConnectAt: 0
   };
+  const ABORTED = "fms-aborted";
 
   const audio = { ctx: null, muted: false, repeatTimer: null };
 
@@ -161,21 +185,98 @@
     }
     setupInstall();
     setupNetworkIndicator();
+    bindDialog();
     bindSetup();
     bindMain();
     registerServiceWorker();
 
-    const joinParam = new URLSearchParams(location.search).get("join");
+    // Einladungslinks tragen den Code im Fragment (#join=…), aeltere Links im Query. Beides sofort aus der Adresse entfernen.
+    const query = new URLSearchParams(location.search);
+    const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const brokerParam = hash.get("broker") || query.get("broker");
+    if (brokerParam) {
+      try { localStorage.setItem(BROKER_KEY, brokerParam); } catch {}
+    }
+    const joinParam = hash.get("join") || query.get("join");
+    if (query.toString() || location.hash) history.replaceState(null, "", location.pathname);
     if (joinParam && !state.session) {
       setMode("join");
       el.setupCode.value = cleanCode(joinParam);
     }
+
+    // Hooks fuer die Android-App.
+    window.fmsNativePosition = (lat, lng, accuracy, speed, heading, time) => {
+      onPosition({ coords: { latitude: lat, longitude: lng, accuracy, speed, heading }, timestamp: time });
+    };
+    window.fmsSetSharing = on => {
+      if (state.session) setSharing(Boolean(on));
+    };
+    window.fmsBack = () => {
+      if (state.dialogResolve) {
+        state.dialogResolve(null);
+        return true;
+      }
+      if (!el.menu.hidden) {
+        openMenu(false);
+        return true;
+      }
+      if (!el.privacy.hidden) {
+        el.privacy.hidden = true;
+        return true;
+      }
+      if (state.pickingMeeting) {
+        setPicking(false);
+        return true;
+      }
+      return false;
+    };
 
     if (state.session) {
       enterGroup();
     } else {
       showSetup();
     }
+  }
+
+  // ---------- Dialog (ersetzt prompt/confirm) ----------
+  function dialog({ title, text = "", input = false, value = "", placeholder = "", ok = "OK", cancel = "Abbrechen", danger = false }) {
+    if (state.dialogResolve) state.dialogResolve(null);
+    return new Promise(resolve => {
+      el.dialogTitle.textContent = title;
+      el.dialogText.textContent = text;
+      el.dialogText.hidden = !text;
+      el.dialogInput.hidden = !input;
+      el.dialogInput.value = value;
+      el.dialogInput.placeholder = placeholder;
+      el.dialogOk.textContent = ok;
+      el.dialogOk.classList.toggle("danger", danger);
+      el.dialogCancel.hidden = cancel === null;
+      el.dialogCancel.textContent = cancel || "Abbrechen";
+      el.dialog.hidden = false;
+      if (input) setTimeout(() => el.dialogInput.focus(), 60);
+      state.dialogResolve = result => {
+        el.dialog.hidden = true;
+        state.dialogResolve = null;
+        resolve(result);
+      };
+    });
+  }
+
+  function bindDialog() {
+    el.dialogOk.addEventListener("click", () => {
+      if (!state.dialogResolve) return;
+      state.dialogResolve(el.dialogInput.hidden ? true : el.dialogInput.value.trim());
+    });
+    el.dialogCancel.addEventListener("click", () => state.dialogResolve && state.dialogResolve(null));
+    el.dialog.addEventListener("click", event => {
+      if (event.target === el.dialog && state.dialogResolve) state.dialogResolve(null);
+    });
+    el.dialogInput.addEventListener("keydown", event => {
+      if (event.key === "Enter" && state.dialogResolve) {
+        event.preventDefault();
+        state.dialogResolve(el.dialogInput.value.trim());
+      }
+    });
   }
 
   // ---------- Setup ----------
@@ -193,7 +294,7 @@
 
     el.setupForce.addEventListener("click", () => {
       if (!state.pendingSession) return;
-      completeJoin(state.pendingSession);
+      completeJoin(state.pendingSession, false);
     });
 
     el.setupForm.addEventListener("submit", async event => {
@@ -231,7 +332,7 @@
             throw new Error("Keine Gruppe mit diesem Code gefunden. Bitte prüfe den Code oder tritt trotzdem bei, falls die Gruppe gerade erst erstellt wurde.");
           }
         }
-        completeJoin(session);
+        completeJoin(session, state.mode === "create");
       } catch (error) {
         if (!state.pendingSession) disconnectNet();
         showSetupError(error.message || "Das hat nicht geklappt.");
@@ -243,7 +344,7 @@
   }
 
   /** Schliesst das Erstellen/Beitreten ab, sobald die Verbindung steht. */
-  function completeJoin(session) {
+  function completeJoin(session, created) {
     state.pendingSession = null;
     el.setupForce.hidden = true;
     state.session = session;
@@ -251,10 +352,10 @@
     state.alert = null;
     state.sosActive = false;
     saveSession();
-    if (state.mode === "create") publishMeta({ name: session.groupName, meetingPoint: null }).catch(() => {});
+    if (created) publishMeta({ name: session.groupName, meetingPoint: null }).catch(() => {});
     history.replaceState(null, "", location.pathname);
     enterGroup();
-    if (state.mode === "create") toast(`Gruppe erstellt. Code: ${session.code}`);
+    if (created) toast(`Gruppe erstellt. Code: ${session.code}`);
   }
 
   function waitForMeta(maxMs) {
@@ -270,6 +371,11 @@
   }
 
   function setMode(mode) {
+    if (mode !== state.mode && state.pendingSession) {
+      state.pendingSession = null;
+      el.setupForce.hidden = true;
+      disconnectNet();
+    }
     state.mode = mode;
     el.segmented.querySelectorAll("button").forEach(button => button.classList.toggle("is-active", button.dataset.mode === mode));
     el.groupNameField.hidden = mode !== "create";
@@ -314,23 +420,24 @@
       else startAlarmSound();
     });
     // Audio muss nach einer Berührung freigeschaltet werden, sonst bleibt der Alarmton in Browsern stumm.
+    const unlockEvents = ["pointerup", "touchend", "click", "keydown"];
     const unlock = () => {
-      unlockAudio();
-      ["pointerdown", "touchstart", "keydown"].forEach(type => document.removeEventListener(type, unlock, true));
+      unlockAudio(() => unlockEvents.forEach(type => document.removeEventListener(type, unlock, true)));
     };
-    ["pointerdown", "touchstart", "keydown"].forEach(type => document.addEventListener(type, unlock, true));
+    unlockEvents.forEach(type => document.addEventListener(type, unlock, true));
     el.privacyClose.addEventListener("click", () => {
       el.privacy.hidden = true;
     });
     el.menuRename.addEventListener("click", async () => {
-      const name = prompt("Dein neuer Name:", state.session?.name || "");
-      if (!name || !name.trim()) return;
       openMenu(false);
-      await rejoinWithName(name.trim());
+      const name = await dialog({ title: "Dein Name", input: true, value: state.session?.name || "", placeholder: "z. B. Jaro", ok: "Speichern" });
+      if (!name) return;
+      await rejoinWithName(name);
     });
     el.menuLeave.addEventListener("click", async () => {
-      if (!confirm("Willst du die Gruppe wirklich verlassen?")) return;
       openMenu(false);
+      const go = await dialog({ title: "Gruppe verlassen?", text: "Dein Eintrag wird bei allen entfernt. Mit dem Code kannst du jederzeit wieder beitreten.", ok: "Verlassen", danger: true });
+      if (!go) return;
       await leaveGroup();
     });
 
@@ -349,6 +456,32 @@
     el.alertNavigate.addEventListener("click", () => {
       const member = activeAlerts()[0];
       if (member && member.lat !== null) openNavigation(member.lat, member.lng);
+    });
+    el.alertRespond.addEventListener("click", () => {
+      const member = activeAlerts()[0];
+      if (!member) return;
+      state.responding = state.responding === member.id ? null : member.id;
+      toast(state.responding ? `${member.name} sieht jetzt, dass du unterwegs bist.` : "Rückmeldung zurückgenommen.");
+      uploadLocation(true).catch(() => {});
+    });
+    el.ownAlertEnd.addEventListener("click", toggleSos);
+    el.ownAlertMessage.addEventListener("click", async () => {
+      const message = await dialog({ title: "Nachricht an alle", input: true, value: state.alert?.message || DEFAULT_ALERT_MESSAGE, placeholder: "Wo bist du? Was ist los?", ok: "Senden" });
+      if (message === null || !state.alert) return;
+      setAlert({ ...state.alert, message: message.slice(0, 160) });
+      toast("Nachricht aktualisiert.");
+    });
+    el.notifyAllow.addEventListener("click", async () => {
+      el.notifyCard.hidden = true;
+      try {
+        const result = await Notification.requestPermission();
+        toast(result === "granted" ? "Benachrichtigungen sind an." : "Benachrichtigungen bleiben aus.");
+      } catch {
+      }
+    });
+    el.notifyLater.addEventListener("click", () => {
+      el.notifyCard.hidden = true;
+      try { localStorage.setItem(NOTIFY_DISMISS_KEY, "1"); } catch {}
     });
 
     el.centerButton.addEventListener("click", () => {
@@ -396,8 +529,23 @@
     startGeolocation();
     startPolling();
     watchBattery();
+    nativeSetSharing(state.sharing);
+    showNotifyCardIfUseful();
     if (net.client) uploadLocation(true);
     else ensureConnected(0);
+  }
+
+  function nativeSetSharing(on) {
+    if (!nativeBridge || typeof nativeBridge.setSharing !== "function") return;
+    try { nativeBridge.setSharing(Boolean(on && state.session)); } catch {}
+  }
+
+  /** Im Browser: einmal freundlich nach Benachrichtigungen fragen (aus einer Geste heraus, nicht mitten im Alarm). */
+  function showNotifyCardIfUseful() {
+    if (nativeBridge || !("Notification" in window) || Notification.permission !== "default") return;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(NOTIFY_DISMISS_KEY) === "1"; } catch {}
+    el.notifyCard.hidden = dismissed;
   }
 
   /**
@@ -411,22 +559,26 @@
       if (!state.session || net.client || net.connecting) return;
       net.connecting = true;
       setNetStatus();
+      let retryIn = -1;
       try {
         await connectGroup(state.session);
         net.retryCount = 0;
         net.failReason = "";
-        setNetStatus();
         uploadLocation(true);
       } catch (error) {
-        net.failReason = error.message || "Keine Verbindung.";
-        const wait = RETRY_DELAYS_MS[Math.min(net.retryCount, RETRY_DELAYS_MS.length - 1)];
-        net.retryCount++;
-        setNetStatus();
-        if (state.session) ensureConnected(wait);
+        if (error && error.message === ABORTED) {
+          // Jemand hat die Verbindung waehrend des Versuchs neu gestartet oder die Gruppe verlassen.
+          retryIn = state.session ? 0 : -1;
+        } else {
+          net.failReason = error.message || "Keine Verbindung.";
+          retryIn = RETRY_DELAYS_MS[Math.min(net.retryCount, RETRY_DELAYS_MS.length - 1)];
+          net.retryCount++;
+        }
       } finally {
         net.connecting = false;
         setNetStatus();
       }
+      if (retryIn >= 0 && state.session && !net.client) ensureConnected(retryIn);
     }, Math.max(0, delayMs || 0));
   }
 
@@ -440,6 +592,9 @@
     if (!state.session) return;
     const cutoff = Date.now() - MEMBER_MAX_AGE_MS;
     const others = [...net.members.values()].filter(member => member.id !== state.session.memberId && memberTime(member, member.lastSeen) > cutoff);
+    if (state.responding && !others.some(member => member.id === state.responding && member.alert?.active)) {
+      state.responding = null;
+    }
     state.group = {
       code: state.session.code,
       name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
@@ -464,6 +619,7 @@
       battery: state.battery,
       sharing: state.sharing,
       alert: state.alert,
+      responding: state.responding,
       lastSeen: new Date().toISOString()
     };
   }
@@ -502,9 +658,28 @@
     el.sosButton.querySelector(".sos-label").textContent = state.sosActive ? "Ich bin sicher" : "Finde mich!";
 
     renderAlerts();
+    renderOwnAlert();
     renderMeeting();
     renderMembers();
     renderMarkers();
+  }
+
+  /** Zeigt der rufenden Person, seit wann der Alarm laeuft und wer unterwegs ist. */
+  function renderOwnAlert() {
+    el.ownAlert.hidden = !state.sosActive;
+    if (!state.sosActive) return;
+    const responders = others().filter(member => member.responding === state.session.memberId);
+    const parts = [`Alarm läuft seit ${formatClock(Date.parse(state.alert?.since || "") || Date.now())}.`];
+    if (responders.length) {
+      parts.push(responders.map(member => {
+        const distance = member.lat !== null && state.position ? ` (${formatDistance(distanceMeters(state.position, member))})` : "";
+        return `${member.name} kommt${distance}`;
+      }).join(", ") + ".");
+    } else {
+      parts.push("Noch keine Rückmeldung.");
+    }
+    if (state.alert?.message) parts.push(`Nachricht: „${state.alert.message}“`);
+    el.ownAlertText.textContent = parts.join(" ");
   }
 
   function renderAlerts() {
@@ -518,8 +693,15 @@
       stopAlarmSound();
       audio.muted = false;
       el.alertMute.textContent = "Ton stumm";
+      if (state.knownAlertsShown) {
+        state.knownAlertsShown = false;
+        clearAlertNotification();
+      }
       return;
     }
+    state.knownAlertsShown = true;
+    const target = alerts[0];
+    el.alertRespond.textContent = state.responding === target.id ? "Bin unterwegs ✓" : "Ich komme";
     const first = alerts[0];
     el.alertTitle.textContent = alerts.length === 1 ? `${first.name} ruft: Finde mich!` : `${alerts.length} Personen rufen um Hilfe`;
     const parts = [];
@@ -643,11 +825,12 @@
       maxZoom: 19,
       attribution: "&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a>"
     }).addTo(state.map);
-    state.map.on("click", event => {
+    state.map.on("click", async event => {
       if (!state.pickingMeeting) return;
-      const label = prompt("Name für den Treffpunkt:", "Treffpunkt") || "Treffpunkt";
       setPicking(false);
-      setMeetingPoint(event.latlng.lat, event.latlng.lng, label);
+      const label = await dialog({ title: "Treffpunkt", text: "Wie soll der Treffpunkt heißen?", input: true, value: "Treffpunkt", ok: "Setzen" });
+      if (label === null) return;
+      setMeetingPoint(event.latlng.lat, event.latlng.lng, label || "Treffpunkt");
     });
   }
 
@@ -836,6 +1019,7 @@
     }
     applySharingUi();
     if (state.sharing) startGeolocation();
+    nativeSetSharing(state.sharing);
     uploadLocation(true);
   }
 
@@ -866,41 +1050,69 @@
 
   // ---------- SOS / Alerts ----------
   async function toggleSos() {
-    const activate = !state.sosActive;
-    let message = "";
-    if (activate) {
-      message = prompt("Kurze Nachricht an alle (optional):", "Ich finde euch nicht. Bitte kommt zu mir!") || "";
-    }
-    state.alert = activate
-      ? { active: true, message: message.slice(0, 160), since: state.alert?.active ? state.alert.since : new Date().toISOString() }
-      : null;
-    state.sosActive = activate;
-    state.session.alert = state.alert;
-    saveSession();
-    if (activate && !state.sharing) setSharing(true);
-    // Sofort Rueckmeldung geben; das Senden darf nie blockieren.
-    vibrate(activate ? [200, 100, 200] : [80]);
-    if (activate) {
-      toast(net.connected ? "Alarm gesendet. Alle in der Gruppe sehen dich jetzt." : "Alarm gesetzt. Er wird gesendet, sobald Verbindung besteht.");
-    } else {
+    if (state.sosActive) {
+      const end = await dialog({ title: "Alarm beenden?", text: "Alle in der Gruppe sehen dann, dass es dir gut geht.", ok: "Alarm beenden" });
+      if (!end) return;
+      setAlert(null);
+      vibrate([80]);
       toast("Alarm beendet.");
+      return;
     }
+    const go = await dialog({ title: "Alarm an alle senden?", text: "Deine Gruppe bekommt sofort Alarm mit deinem Standort. Eine Nachricht kannst du danach ergänzen.", ok: "Alarm senden", danger: true });
+    if (!go) return;
+    setAlert({ active: true, message: DEFAULT_ALERT_MESSAGE, since: new Date().toISOString() });
+    // Sofort Rueckmeldung geben; das Senden darf nie blockieren.
+    vibrate([200, 100, 200]);
+    toast(net.connected ? "Alarm gesendet. Alle in der Gruppe sehen dich jetzt." : "Alarm gesetzt. Er wird gesendet, sobald Verbindung besteht.");
+  }
+
+  function setAlert(alert) {
+    state.alert = alert;
+    state.sosActive = Boolean(alert);
+    if (state.session) {
+      state.session.alert = alert;
+      saveSession();
+    }
+    if (alert && !state.sharing) setSharing(true);
+    rebuildGroup();
+    render();
     uploadLocation(true).catch(() => {});
   }
 
   function notifyAlert(member) {
     vibrate([300, 120, 300, 120, 500]);
     startAlarmSound();
-    if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
-      try {
-        new Notification("Find Mein Soon", { body: `${member.name} ruft: Finde mich!`, icon: "icons/icon-192.png", tag: "fms-alert" });
-      } catch {
-      }
-    }
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission().catch(() => {});
-    }
+    showAlertNotification(member);
     if (state.map && member.lat !== null) state.map.setView([member.lat, member.lng], Math.max(state.map.getZoom(), 16));
+  }
+
+  function showAlertNotification(member) {
+    const title = `${member.name} ruft: Finde mich!`;
+    const body = member.alert?.message || "Öffne Find Mein Soon, um die Person auf der Karte zu sehen.";
+    if (nativeBridge && typeof nativeBridge.showAlert === "function") {
+      try { nativeBridge.showAlert(member.id, member.name, member.alert?.message || "", member.lat ?? 0, member.lng ?? 0); } catch {}
+      return;
+    }
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const options = { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "fms-alert", renotify: true, requireInteraction: true, vibrate: [300, 120, 300, 120, 500] };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then(registration => registration.showNotification(title, options)).catch(() => {});
+      return;
+    }
+    try { new Notification(title, options); } catch {}
+  }
+
+  function clearAlertNotification() {
+    if (nativeBridge && typeof nativeBridge.clearAlert === "function") {
+      try { nativeBridge.clearAlert(); } catch {}
+      return;
+    }
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then(registration => registration.getNotifications({ tag: "fms-alert" }))
+        .then(list => list.forEach(notification => notification.close()))
+        .catch(() => {});
+    }
   }
 
   function vibrate(pattern) {
@@ -909,34 +1121,45 @@
     }
   }
 
-  function unlockAudio() {
+  /** Erzeugt den AudioContext und versucht ihn zu starten; onRunning wird gerufen, sobald er wirklich laeuft. */
+  function unlockAudio(onRunning) {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
       if (!audio.ctx) audio.ctx = new Ctx();
-      if (audio.ctx.state !== "running") audio.ctx.resume().catch(() => {});
+      if (audio.ctx.state === "running") {
+        if (onRunning) onRunning();
+        return;
+      }
+      audio.ctx.resume().then(() => {
+        if (audio.ctx.state === "running" && onRunning) onRunning();
+      }).catch(() => {});
     } catch {
     }
   }
 
-  /** Sirenenartiger Ton, deutlich lauter als ein Piepser. */
+  /** Sirenenartiger Ton, deutlich lauter als ein Piepser. Spielt, sobald der AudioContext laeuft. */
   function beep() {
     try {
       unlockAudio();
       const ctx = audio.ctx;
-      if (!ctx || ctx.state !== "running") return;
-      const gain = ctx.createGain();
-      gain.gain.value = 0.4;
-      gain.connect(ctx.destination);
-      [[0, 880], [0.45, 660], [0.9, 880], [1.35, 660]].forEach(([offset, freq]) => {
-        const osc = ctx.createOscillator();
-        osc.type = "square";
-        osc.frequency.value = freq;
-        osc.connect(gain);
-        osc.start(ctx.currentTime + offset);
-        osc.stop(ctx.currentTime + offset + 0.4);
-      });
-      setTimeout(() => { try { gain.disconnect(); } catch {} }, 2200);
+      if (!ctx) return;
+      const play = () => {
+        const gain = ctx.createGain();
+        gain.gain.value = 0.4;
+        gain.connect(ctx.destination);
+        [[0, 880], [0.45, 660], [0.9, 880], [1.35, 660]].forEach(([offset, freq]) => {
+          const osc = ctx.createOscillator();
+          osc.type = "square";
+          osc.frequency.value = freq;
+          osc.connect(gain);
+          osc.start(ctx.currentTime + offset);
+          osc.stop(ctx.currentTime + offset + 0.4);
+        });
+        setTimeout(() => { try { gain.disconnect(); } catch {} }, 2200);
+      };
+      if (ctx.state === "running") play();
+      else ctx.resume().then(() => { if (ctx.state === "running") play(); }).catch(() => {});
     } catch {
     }
   }
@@ -963,8 +1186,15 @@
   async function shareCode() {
     if (!state.group) return;
     const base = isNativeApp || !/^https?:$/.test(location.protocol) ? PUBLIC_APP_URL : `${location.origin}${location.pathname}`;
-    const url = `${base}?join=${state.group.code}`;
+    const url = `${base}#join=${state.group.code}`;
     const text = `Komm in meine Find-Mein-Soon-Gruppe "${state.group.name}". Code: ${state.group.code}`;
+    if (nativeBridge && typeof nativeBridge.share === "function") {
+      try {
+        nativeBridge.share("Find Mein Soon", `${text}\n${url}`);
+        return;
+      } catch {
+      }
+    }
     if (navigator.share) {
       try {
         await navigator.share({ title: "Find Mein Soon", text, url });
@@ -976,7 +1206,7 @@
       await navigator.clipboard.writeText(`${text}\n${url}`);
       toast("Code und Link kopiert.");
     } catch {
-      prompt("Code zum Kopieren:", `${text}\n${url}`);
+      dialog({ title: "Code zum Kopieren", input: true, value: `${text} ${url}`, ok: "Fertig", cancel: null });
     }
   }
 
@@ -1022,6 +1252,11 @@
     stopGeolocation();
     stopPolling();
     disconnectNet();
+    nativeSetSharing(false);
+    clearAlertNotification();
+    state.responding = null;
+    state.knownAlertsShown = false;
+    el.ownAlert.hidden = true;
     state.session = null;
     state.alert = null;
     state.group = null;
@@ -1170,8 +1405,10 @@
    */
   async function connectGroup(session) {
     if (typeof mqtt === "undefined") throw new Error("Die Netzwerk-Bibliothek konnte nicht geladen werden.");
-    disconnectNet();
+    resetNet();
+    const generation = net.generation;
     const secrets = await deriveGroupSecrets(session.code);
+    if (generation !== net.generation) throw new Error(ABORTED);
     net.key = secrets.key;
     net.root = `fms/v1/${secrets.topicId}`;
     net.members = new Map();
@@ -1182,16 +1419,25 @@
     for (let index = 0; index < net.brokers.length; index++) {
       const attempts = index === 0 ? 2 : 1;
       for (let attempt = 0; attempt < attempts; attempt++) {
+        let client = null;
         try {
-          net.client = await connectBroker(net.brokers[index], session);
+          client = await connectBroker(net.brokers[index], session);
+        } catch (error) {
+          lastError = error;
+        }
+        if (generation !== net.generation) {
+          // Waehrenddessen wurde neu verbunden oder die Gruppe verlassen: diesen Versuch verwerfen.
+          if (client) { try { client.end(true); } catch {} }
+          throw new Error(ABORTED);
+        }
+        if (client) {
+          net.client = client;
           net.brokerIndex = index;
           net.connected = true;
+          net.lastConnectAt = Date.now();
           updateNetDot();
           if (index > 0) startPrimaryProbe(session);
           return;
-        } catch (error) {
-          lastError = error;
-          if (!state.session && !state.pendingSession && !session) return;
         }
       }
     }
@@ -1203,25 +1449,42 @@
 
   function startPrimaryProbe(session) {
     clearInterval(net.probeTimer);
-    net.probeTimer = setInterval(async () => {
-      if (!net.client || net.brokerIndex <= 0 || net.connecting) return;
+    const timer = setInterval(async () => {
+      if (!net.client || net.brokerIndex <= 0 || net.connecting || net.probing) return;
+      const current = net.client;
+      const root = net.root;
+      const generation = net.generation;
+      net.probing = true;
+      let primary = null;
       try {
-        const primary = await connectBroker(net.brokers[0], session);
-        // Umzug zum Haupt-Broker: alte Verbindung schliessen, Mitglieder aus den retained Nachrichten neu aufbauen.
-        const old = net.client;
-        net.client = primary;
-        net.brokerIndex = 0;
-        try { old.end(true); } catch {}
-        clearInterval(net.probeTimer);
-        net.probeTimer = null;
-        scheduleResync();
-        publishSelf().catch(() => {});
-        if (net.meta) publish(`${net.root}/meta`, net.meta, META_EXPIRY_S).catch(() => {});
-        updateNetDot();
+        primary = await connectBroker(net.brokers[0], session);
       } catch {
         // Haupt-Broker weiterhin nicht erreichbar, spaeter erneut probieren.
+      } finally {
+        net.probing = false;
       }
+      if (!primary) return;
+      if (net.client !== current || net.root !== root || generation !== net.generation || !state.session) {
+        // Inzwischen neu verbunden oder Gruppe verlassen: Probe-Verbindung verwerfen.
+        try { primary.end(true); } catch {}
+        return;
+      }
+      // Umzug zum Haupt-Broker: alte Verbindung schliessen, Mitglieder aus den retained Nachrichten neu aufbauen.
+      net.client = primary;
+      net.brokerIndex = 0;
+      net.connected = true;
+      net.lastConnectAt = Date.now();
+      try { current.end(true); } catch {}
+      if (net.probeTimer === timer) {
+        clearInterval(timer);
+        net.probeTimer = null;
+      }
+      scheduleResync();
+      publishSelf().catch(() => {});
+      if (net.meta) publish(`${net.root}/meta`, net.meta, META_EXPIRY_S).catch(() => {});
+      updateNetDot();
     }, PRIMARY_PROBE_MS);
+    net.probeTimer = timer;
   }
 
   function connectBroker(url, session, protocolVersion = 5) {
@@ -1252,9 +1515,11 @@
       const timer = setTimeout(() => fail(new Error("Zeitüberschreitung")), 10000);
 
       client.on("connect", () => {
-        net.connected = true;
         if (settled) {
+          if (net.client !== client) return; // verwaister Client (Probe/abgebrochener Versuch): ignorieren
           // Reconnect: bei clean=true muss neu abonniert und der eigene Stand erneut gesendet werden.
+          net.connected = true;
+          net.lastConnectAt = Date.now();
           client.subscribe(`${net.root}/#`, { qos: 1 });
           scheduleResync();
           publishSelf().catch(() => {});
@@ -1271,7 +1536,6 @@
           settled = true;
           resolve(client);
         });
-        updateNetDot();
       });
       client.on("message", (topic, payload, packet) => {
         if (net.client === client || !settled) handleMessage(topic, payload, packet);
@@ -1280,9 +1544,19 @@
         if (!settled) fail(error);
       });
       client.on("close", () => {
+        if (!settled) {
+          // Verbindung ohne CONNACK geschlossen: Broker kann vermutlich kein MQTT 5, oder er ist nicht erreichbar.
+          fail(new Error(protocolVersion === 5 ? "protocol version rejected" : "Verbindung geschlossen"));
+          return;
+        }
         if (net.client === client) {
           net.connected = false;
           updateNetDot();
+          // Watchdog: haengt der Broker laenger als eine Minute, obwohl Internet da ist, die Liste neu durchgehen.
+          if (navigator.onLine && state.session && !state.leaving && Date.now() - net.lastConnectAt > 60000) {
+            disconnectNet();
+            ensureConnected(0);
+          }
         }
       });
       client.on("offline", () => {
@@ -1316,25 +1590,31 @@
     }, 5000);
   }
 
-  function disconnectNet() {
+  /** Trennt die aktuelle Verbindung und macht laufende Versuche ungueltig (Generation), ohne den Retry-Zustand zu beruehren. */
+  function resetNet() {
+    net.generation++;
     if (net.client) {
       try { net.client.end(true); } catch {}
     }
-    clearTimeout(net.retryTimer);
     clearInterval(net.probeTimer);
     clearTimeout(net.resyncTimer);
-    net.retryTimer = null;
     net.probeTimer = null;
     net.resyncTimer = null;
     net.client = null;
     net.connected = false;
-    net.connecting = false;
     net.key = null;
     net.root = null;
     net.members = new Map();
     net.meta = null;
     net.brokerIndex = -1;
     net.lastAck = 0;
+  }
+
+  /** Vollstaendiges Trennen (Gruppe verlassen, "Neu verbinden"). Ein laufender Verbindungsversuch bricht sich selbst ab. */
+  function disconnectNet() {
+    resetNet();
+    clearTimeout(net.retryTimer);
+    net.retryTimer = null;
     net.failReason = "";
     updateNetDot();
   }
@@ -1396,6 +1676,7 @@
       battery: num(data.battery),
       sharing: data.sharing !== false,
       alert: data.alert && data.alert.active ? { active: true, message: cleanText(data.alert.message, 160), since: String(data.alert.since || "") } : null,
+      responding: typeof data.responding === "string" && /^[a-z0-9]{1,32}$/.test(data.responding) ? data.responding : null,
       locatedAt: typeof data.locatedAt === "string" ? data.locatedAt : null,
       lastSeen: typeof data.lastSeen === "string" ? data.lastSeen : new Date().toISOString(),
       ts: Number(data.ts || 0),
@@ -1508,11 +1789,16 @@
   /** Holt den Code auch aus eingefuegtem Einladungstext oder einem Link heraus. */
   function extractCode(value) {
     const raw = String(value || "");
-    const fromLink = raw.match(/join=([A-Za-z0-9]{8})/);
+    const fromLink = raw.match(new RegExp(`join=([A-Za-z0-9]{${CODE_LENGTH}})`));
     if (fromLink) return cleanCode(fromLink[1]);
     const upper = raw.toUpperCase();
-    const alphabetToken = upper.match(new RegExp(`(?:^|[^A-Z0-9])([${CODE_ALPHABET}]{${CODE_LENGTH}})(?:[^A-Z0-9]|$)`));
-    if (alphabetToken && upper.replace(/[^A-Z0-9]/g, "").length > CODE_LENGTH) return alphabetToken[1];
+    const labelled = upper.match(new RegExp(`CODE[:\\s]*([${CODE_ALPHABET}]{${CODE_LENGTH}})`));
+    if (labelled) return labelled[1];
+    if (upper.replace(/[^A-Z0-9]/g, "").length > CODE_LENGTH) {
+      // Laengerer Text: das letzte passende Wort ist der Code (steht in Einladungen am Ende).
+      const tokens = [...upper.matchAll(new RegExp(`(?:^|[^A-Z0-9])([${CODE_ALPHABET}]{${CODE_LENGTH}})(?=[^A-Z0-9]|$)`, "g"))];
+      if (tokens.length) return tokens[tokens.length - 1][1];
+    }
     return cleanCode(raw);
   }
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "find-mein-soon-v2";
+const CACHE_NAME = "find-mein-soon-v3";
 const SHELL = [
   "./",
   "./index.html",
@@ -68,6 +68,18 @@ self.addEventListener("fetch", event => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+// Tipp auf eine Alarm-Benachrichtigung: App in den Vordergrund holen.
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      const client = list.find(item => "focus" in item);
+      if (client) return client.focus();
+      return self.clients.openWindow("./");
     })
   );
 });

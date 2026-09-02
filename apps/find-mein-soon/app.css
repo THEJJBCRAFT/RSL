@@ -876,3 +876,75 @@ a {
 .member-item.is-offline .member-avatar {
   filter: grayscale(1);
 }
+
+/* Stufe B: eigener Alarm, Benachrichtigungs-Karte, Dialog */
+.own-alert,
+.notify-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.own-alert {
+  border: 1px solid rgba(255, 50, 72, .6);
+  background: rgba(255, 50, 72, .12);
+}
+
+.notify-card {
+  border: 1px solid rgba(79, 244, 207, .4);
+  background: rgba(79, 244, 207, .08);
+}
+
+.own-alert span,
+.notify-card span {
+  color: var(--muted);
+}
+
+.own-alert div,
+.notify-card div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.dialog .menu-panel {
+  gap: 12px;
+}
+
+.dialog input {
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 12px;
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 16px;
+  outline: none;
+}
+
+.dialog input:focus {
+  border-color: var(--aqua);
+}
+
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.primary-button.danger {
+  background: linear-gradient(120deg, var(--red-deep), var(--red));
+}
+
+@media (min-width: 900px) {
+  .dialog {
+    align-items: center;
+  }
+
+  .dialog .menu-panel {
+    border-radius: 20px;
+  }
+}

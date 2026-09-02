@@ -3,4 +3,14 @@
     <string name="app_name">Find Mein Soon</string>
     <string name="location_denied">Ohne Standort-Berechtigung kann dich niemand finden. Du kannst sie in den Android-Einstellungen erlauben.</string>
     <string name="no_app_for_link">Keine App zum Öffnen dieses Links gefunden.</string>
+    <string name="channel_sharing">Standort teilen</string>
+    <string name="channel_sharing_description">Zeigt an, dass Find Mein Soon deinen Standort im Hintergrund teilt.</string>
+    <string name="sharing_title">Find Mein Soon teilt deinen Standort</string>
+    <string name="sharing_text">Deine Gruppe sieht dich auch bei ausgeschaltetem Bildschirm.</string>
+    <string name="sharing_stop">Stopp</string>
+    <string name="channel_alarm">Alarm</string>
+    <string name="channel_alarm_description">Jemand aus deiner Gruppe ruft „Finde mich!“.</string>
+    <string name="alarm_title">%1$s ruft: Finde mich!</string>
+    <string name="alarm_text_default">Öffne Find Mein Soon, um die Person auf der Karte zu sehen.</string>
+    <string name="alarm_route">Route</string>
 </resources>

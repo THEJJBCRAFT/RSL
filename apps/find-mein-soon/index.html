@@ -83,7 +83,7 @@
           <li>Gruppe erstellen und Code an alle schicken.</li>
           <li>Jeder tippt seinen Namen und den Code ein. Kein Konto, kein Server.</li>
           <li>Standort freigeben. Alle sehen sich verschlüsselt auf der Karte.</li>
-          <li>Verloren? "Finde mich!" drücken. Alle bekommen Alarm, solange ihre App geöffnet ist.</li>
+          <li>Verloren? "Finde mich!" drücken. Alle bekommen Alarm, in der Android-App auch im Hintergrund.</li>
         </ol>
       </div>
     </section>
@@ -96,6 +96,7 @@
         </div>
         <div class="alert-actions">
           <button type="button" class="alert-nav" id="alertNavigate">Route</button>
+          <button type="button" class="alert-nav" id="alertRespond">Ich komme</button>
           <button type="button" class="alert-mute" id="alertMute">Ton stumm</button>
         </div>
       </div>
@@ -150,6 +151,24 @@
           </div>
         </div>
 
+        <div class="own-alert" id="ownAlert" hidden>
+          <strong>Dein Alarm läuft</strong>
+          <span id="ownAlertText"></span>
+          <div>
+            <button type="button" class="ghost-button small" id="ownAlertMessage">Nachricht ändern</button>
+            <button type="button" class="ghost-button small danger" id="ownAlertEnd">Alarm beenden</button>
+          </div>
+        </div>
+
+        <div class="notify-card" id="notifyCard" hidden>
+          <strong>Alarm auch, wenn die App im Hintergrund ist?</strong>
+          <span>Dann bekommst du eine Benachrichtigung, wenn jemand „Finde mich!“ drückt.</span>
+          <div>
+            <button type="button" class="ghost-button small" id="notifyAllow">Erlauben</button>
+            <button type="button" class="ghost-button small" id="notifyLater">Später</button>
+          </div>
+        </div>
+
         <ul class="member-list" id="memberList"></ul>
       </div>
     </section>
@@ -175,6 +194,18 @@
         <p>Karten werden von OpenStreetMap geladen. Dabei erhält OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
         <p>Beim Nachrichtendienst bleibt nur der letzte Stand jedes Mitglieds gespeichert. Mit "Gruppe verlassen" wird dein Eintrag dort gelöscht. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
         <button type="button" class="primary-button" id="privacyClose">Verstanden</button>
+      </div>
+    </div>
+
+    <div class="menu dialog" id="dialog" hidden>
+      <div class="menu-panel">
+        <h2 id="dialogTitle"></h2>
+        <p id="dialogText"></p>
+        <input type="text" id="dialogInput" maxlength="160" hidden>
+        <div class="dialog-actions">
+          <button type="button" class="ghost-button" id="dialogCancel">Abbrechen</button>
+          <button type="button" class="primary-button" id="dialogOk">OK</button>
+        </div>
       </div>
     </div>
 
