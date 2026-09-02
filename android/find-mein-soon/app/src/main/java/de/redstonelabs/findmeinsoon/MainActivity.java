@@ -74,6 +74,10 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             loadApp(getIntent());
+        } else {
+            // Wiederhergestellte Seite ebenfalls pruefen, falls der Server auf einen anderen Host umgeleitet hat.
+            String current = webView.getUrl();
+            expectApp = current != null && isAppUrl(Uri.parse(current));
         }
     }
 
@@ -148,6 +152,9 @@ public class MainActivity extends Activity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                // Eine vom Nutzer oder Skript ausgeloeste Navigation (kein Server-Redirect) ist nicht mehr unsere
+                // App-Adresse: die naechste fertige Seite darf nicht mehr pauschal auf die App geprueft werden.
+                if (!request.isRedirect()) expectApp = false;
                 return handleNavigation(request.getUrl());
             }
 
