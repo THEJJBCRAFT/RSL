@@ -28,7 +28,7 @@
       </div>
       <div class="topbar-actions">
         <span class="net-dot" id="netDot" title="Verbindung"></span>
-        <button type="button" class="icon-button" id="menuButton" aria-label="Menue">&#9776;</button>
+        <button type="button" class="icon-button" id="menuButton" aria-label="Menü">&#9776;</button>
       </div>
     </header>
 
@@ -57,11 +57,12 @@
 
         <label id="codeField" hidden>
           <span>Gruppencode</span>
-          <input type="text" id="setupCode" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD2345" class="code-input">
+          <input type="text" id="setupCode" maxlength="160" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD2345" class="code-input">
         </label>
 
         <p class="form-error" id="setupError" hidden></p>
         <button type="submit" class="primary-button" id="setupSubmit">Gruppe erstellen</button>
+        <button type="button" class="ghost-button" id="setupForce" hidden>Trotzdem beitreten</button>
       </form>
 
       <div class="card hint-card" id="installCard" hidden>
@@ -72,7 +73,7 @@
 
       <div class="card hint-card" id="apkCard" hidden>
         <strong>Android-App (APK)</strong>
-        <p>Fuer Android gibt es Find Mein Soon auch als APK-Datei. Herunterladen, oeffnen und die Installation aus unbekannten Quellen erlauben.</p>
+        <p>Für Android gibt es Find Mein Soon auch als APK-Datei. Herunterladen, öffnen und die Installation aus unbekannten Quellen erlauben.</p>
         <a class="ghost-button link-button" href="https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk" rel="noopener">APK herunterladen</a>
       </div>
 
@@ -81,8 +82,8 @@
         <ol>
           <li>Gruppe erstellen und Code an alle schicken.</li>
           <li>Jeder tippt seinen Namen und den Code ein. Kein Konto, kein Server.</li>
-          <li>Standort freigeben. Alle sehen sich verschluesselt auf der Karte.</li>
-          <li>Verloren? "Finde mich!" druecken. Alle bekommen Alarm.</li>
+          <li>Standort freigeben. Alle sehen sich verschlüsselt auf der Karte.</li>
+          <li>Verloren? "Finde mich!" drücken. Alle bekommen Alarm, solange ihre App geöffnet ist.</li>
         </ol>
       </div>
     </section>
@@ -93,7 +94,10 @@
           <strong id="alertTitle">Jemand braucht Hilfe</strong>
           <span id="alertText"></span>
         </div>
-        <button type="button" class="alert-nav" id="alertNavigate">Route</button>
+        <div class="alert-actions">
+          <button type="button" class="alert-nav" id="alertNavigate">Route</button>
+          <button type="button" class="alert-mute" id="alertMute">Ton stumm</button>
+        </div>
       </div>
 
       <div class="map-wrap">
@@ -117,7 +121,8 @@
         <div class="group-line">
           <div>
             <strong id="groupName">Gruppe</strong>
-            <span>Code: <code id="groupCode">------</code></span>
+            <span>Code: <code id="groupCode">--------</code></span>
+            <span class="net-status" id="netStatus"></span>
           </div>
           <button type="button" class="ghost-button small" id="shareButton">Code teilen</button>
         </div>
@@ -154,20 +159,21 @@
         <h2>Find Mein Soon</h2>
         <p id="menuInfo"></p>
         <button type="button" class="ghost-button" id="menuInstall" hidden>Als App installieren</button>
-        <button type="button" class="ghost-button" id="menuRename">Namen aendern</button>
+        <button type="button" class="ghost-button" id="menuReconnect">Neu verbinden</button>
+        <button type="button" class="ghost-button" id="menuRename">Namen ändern</button>
         <button type="button" class="ghost-button" id="menuPrivacy">Datenschutz</button>
         <button type="button" class="ghost-button danger" id="menuLeave">Gruppe verlassen</button>
         <a class="ghost-button link-button" href="../../index.html">Zur JARO & DELTA Website</a>
-        <button type="button" class="primary-button" id="menuClose">Schliessen</button>
+        <button type="button" class="primary-button" id="menuClose">Schließen</button>
       </div>
     </div>
 
     <div class="menu" id="privacy" hidden>
       <div class="menu-panel">
         <h2>Datenschutz</h2>
-        <p>Find Mein Soon hat keinen eigenen Server. Die Handys deiner Gruppe tauschen ihre Standorte ueber einen oeffentlichen Nachrichtendienst (MQTT-Broker) aus. Alle Daten werden vorher auf dem Handy mit einem Schluessel aus dem Gruppencode verschluesselt. Der Dienst sieht nur unlesbare Daten; entschluesseln kann nur, wer den Gruppencode kennt. Gib den Code deshalb nur an Leute weiter, die dich sehen duerfen.</p>
-        <p>Karten werden von OpenStreetMap geladen. Dabei erhaelt OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
-        <p>Beim Nachrichtendienst bleibt nur der letzte Stand jedes Mitglieds gespeichert. Mit "Gruppe verlassen" wird dein Eintrag dort geloescht. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
+        <p>Find Mein Soon hat keinen eigenen Server. Die Handys deiner Gruppe tauschen ihre Standorte über einen öffentlichen Nachrichtendienst (MQTT-Broker) aus. Alle Daten werden vorher auf dem Handy mit einem Schlüssel aus dem Gruppencode verschlüsselt. Der Dienst sieht nur unlesbare Daten; entschlüsseln kann nur, wer den Gruppencode kennt. Gib den Code deshalb nur an Leute weiter, die dich sehen dürfen.</p>
+        <p>Karten werden von OpenStreetMap geladen. Dabei erhält OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
+        <p>Beim Nachrichtendienst bleibt nur der letzte Stand jedes Mitglieds gespeichert. Mit "Gruppe verlassen" wird dein Eintrag dort gelöscht. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
         <button type="button" class="primary-button" id="privacyClose">Verstanden</button>
       </div>
     </div>

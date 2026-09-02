@@ -76,6 +76,14 @@ jobs:
               -dname "CN=Find Mein Soon, O=Redstone Labs, C=DE"
             echo "KEY_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "SIGNING_NOTE=Signiert mit einem einmaligen Schluessel. Vor der Installation einer neueren Version muss die alte App deinstalliert werden. Fuer Updates ohne Deinstallation den Keystore als Secret hinterlegen (siehe README)." >> "$GITHUB_ENV"
+            {
+              echo "## Achtung: kein Signatur-Schluessel hinterlegt"
+              echo
+              echo "Diese APK ist mit einem einmaligen Schluessel signiert. Nutzer muessen die alte App vor jedem Update deinstallieren und verlieren dabei ihre Gruppe."
+              echo
+              echo "Bitte einmalig einen Keystore erzeugen und die Secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS hinterlegen (Anleitung im README unter \"Android-App (APK)\")."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning title=Kein Signatur-Schluessel::APK mit Einmal-Schluessel signiert. Secrets ANDROID_KEYSTORE_* hinterlegen, damit Updates ohne Deinstallation moeglich sind."
           fi
           echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> "$GITHUB_ENV"
 

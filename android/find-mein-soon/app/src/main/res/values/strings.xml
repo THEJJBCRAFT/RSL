@@ -2,5 +2,5 @@
 <resources>
     <string name="app_name">Find Mein Soon</string>
     <string name="location_denied">Ohne Standort-Berechtigung kann dich niemand finden. Du kannst sie in den Android-Einstellungen erlauben.</string>
-    <string name="no_app_for_link">Keine App zum Oeffnen dieses Links gefunden.</string>
+    <string name="no_app_for_link">Keine App zum Öffnen dieses Links gefunden.</string>
 </resources>

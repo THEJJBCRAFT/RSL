@@ -13,7 +13,12 @@
   const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const CODE_LENGTH = 8;
   const KEY_ITERATIONS = 100000;
-  const MEMBER_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+  const MEMBER_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+  const MEMBER_EXPIRY_S = 7 * 24 * 60 * 60;
+  const META_EXPIRY_S = 60 * 24 * 60 * 60;
+  const RETRY_DELAYS_MS = [5000, 10000, 30000, 60000];
+  const PRIMARY_PROBE_MS = 60000;
+  const ALARM_REPEAT_MS = 15000;
   const MEMBER_COLORS = ["#4ff4cf", "#ff3248", "#ffd166", "#8b5cf6", "#38bdf8", "#fb923c", "#a3e635", "#f472b6"];
   const POLL_MS = 8000;
   const HEARTBEAT_MS = 25000;
@@ -70,6 +75,10 @@
     sheetHandle: $("sheetHandle"),
     groupName: $("groupName"),
     groupCode: $("groupCode"),
+    netStatus: $("netStatus"),
+    setupForce: $("setupForce"),
+    menuReconnect: $("menuReconnect"),
+    alertMute: $("alertMute"),
     shareButton: $("shareButton"),
     sosButton: $("sosButton"),
     shareToggle: $("shareToggle"),
@@ -105,7 +114,9 @@
     meetingMarker: null,
     firstFit: false,
     toastTimer: null,
-    alert: null
+    alert: null,
+    pendingSession: null,
+    leaving: false
   };
 
   // Verbindung zur Gruppe (serverlos ueber einen oeffentlichen MQTT-Broker).
@@ -114,11 +125,33 @@
     key: null,
     root: null,
     connected: false,
+    connecting: false,
     members: new Map(),
-    meta: null
+    meta: null,
+    brokers: [],
+    brokerIndex: -1,
+    retryTimer: null,
+    retryCount: 0,
+    probeTimer: null,
+    lastAck: 0,
+    failReason: "",
+    resyncTimer: null
   };
 
+  const audio = { ctx: null, muted: false, repeatTimer: null };
+
   init();
+
+  // Kleiner Einblick fuer automatische Tests (keine Geheimnisse).
+  window.fmsDebug = () => ({
+    connected: net.connected,
+    connecting: net.connecting,
+    broker: net.brokers[net.brokerIndex] || null,
+    protocol: net.client?.options?.protocolVersion || null,
+    members: net.members.size,
+    retries: net.retryCount,
+    lastAck: net.lastAck
+  });
 
   function init() {
     if (isNativeApp) {
@@ -153,7 +186,14 @@
     });
 
     el.setupCode.addEventListener("input", () => {
-      el.setupCode.value = cleanCode(el.setupCode.value);
+      el.setupCode.value = extractCode(el.setupCode.value);
+      el.setupForce.hidden = true;
+      state.pendingSession = null;
+    });
+
+    el.setupForce.addEventListener("click", () => {
+      if (!state.pendingSession) return;
+      completeJoin(state.pendingSession);
     });
 
     el.setupForm.addEventListener("submit", async event => {
@@ -167,32 +207,65 @@
       el.setupSubmit.disabled = true;
       el.setupSubmit.textContent = "Verbinde ...";
       try {
-        if (!window.crypto?.subtle) throw new Error("Dieser Browser unterstuetzt die Verschluesselung nicht (HTTPS noetig).");
+        if (!window.crypto?.subtle) throw new Error("Dieser Browser unterstützt die Verschlüsselung nicht (HTTPS nötig).");
         let code;
         let groupName = "";
         if (state.mode === "create") {
           code = newGroupCode();
           groupName = el.setupGroupName.value.trim().slice(0, 40) || `${memberName}s Gruppe`;
         } else {
-          code = cleanCode(el.setupCode.value);
+          code = extractCode(el.setupCode.value);
           if (code.length !== CODE_LENGTH) throw new Error(`Der Gruppencode hat ${CODE_LENGTH} Zeichen.`);
+          const wrong = [...code].filter(char => !CODE_ALPHABET.includes(char));
+          if (wrong.length) throw new Error(`Der Code enthält nie ${wrong.join(", ")}. Bitte prüfe ihn (z. B. 8 statt B, 5 statt S, 2 statt Z).`);
         }
         const memberId = randomId(8);
-        const session = { code, memberId, name: memberName.slice(0, 40), color: colorFor(memberId), groupName };
+        const session = { code, memberId, name: memberName.slice(0, 40), color: colorFor(memberId), groupName, sharing: true, alert: null };
         await connectGroup(session);
-        state.session = session;
-        saveSession();
-        if (state.mode === "create") await publishMeta({ name: groupName, meetingPoint: null });
-        history.replaceState(null, "", location.pathname);
-        enterGroup();
-        if (state.mode === "create") toast(`Gruppe erstellt. Code: ${code}`);
+        if (state.mode === "join") {
+          // Gruppendaten kommen als retained Nachricht sofort nach dem Abonnieren. Kommt nichts, stimmt der Code meist nicht.
+          const found = await waitForMeta(4000);
+          if (!found) {
+            state.pendingSession = session;
+            el.setupForce.hidden = false;
+            throw new Error("Keine Gruppe mit diesem Code gefunden. Bitte prüfe den Code oder tritt trotzdem bei, falls die Gruppe gerade erst erstellt wurde.");
+          }
+        }
+        completeJoin(session);
       } catch (error) {
-        disconnectNet();
+        if (!state.pendingSession) disconnectNet();
         showSetupError(error.message || "Das hat nicht geklappt.");
       } finally {
         el.setupSubmit.disabled = false;
         setMode(state.mode);
       }
+    });
+  }
+
+  /** Schliesst das Erstellen/Beitreten ab, sobald die Verbindung steht. */
+  function completeJoin(session) {
+    state.pendingSession = null;
+    el.setupForce.hidden = true;
+    state.session = session;
+    state.sharing = true;
+    state.alert = null;
+    state.sosActive = false;
+    saveSession();
+    if (state.mode === "create") publishMeta({ name: session.groupName, meetingPoint: null }).catch(() => {});
+    history.replaceState(null, "", location.pathname);
+    enterGroup();
+    if (state.mode === "create") toast(`Gruppe erstellt. Code: ${session.code}`);
+  }
+
+  function waitForMeta(maxMs) {
+    return new Promise(resolve => {
+      const started = Date.now();
+      const check = () => {
+        if (net.meta) return resolve(true);
+        if (Date.now() - started > maxMs || !net.client) return resolve(false);
+        setTimeout(check, 200);
+      };
+      check();
     });
   }
 
@@ -227,6 +300,25 @@
       openMenu(false);
       el.privacy.hidden = false;
     });
+    el.menuReconnect.addEventListener("click", () => {
+      openMenu(false);
+      if (!state.session) return;
+      disconnectNet();
+      toast("Verbindung wird neu aufgebaut ...");
+      ensureConnected(0);
+    });
+    el.alertMute.addEventListener("click", () => {
+      audio.muted = !audio.muted;
+      el.alertMute.textContent = audio.muted ? "Ton an" : "Ton stumm";
+      if (audio.muted) stopAlarmSound();
+      else startAlarmSound();
+    });
+    // Audio muss nach einer Berührung freigeschaltet werden, sonst bleibt der Alarmton in Browsern stumm.
+    const unlock = () => {
+      unlockAudio();
+      ["pointerdown", "touchstart", "keydown"].forEach(type => document.removeEventListener(type, unlock, true));
+    };
+    ["pointerdown", "touchstart", "keydown"].forEach(type => document.addEventListener(type, unlock, true));
     el.privacyClose.addEventListener("click", () => {
       el.privacy.hidden = true;
     });
@@ -279,6 +371,8 @@
       if (!state.session) return;
       if (document.visibilityState === "visible") {
         startPolling();
+        ensureConnected(0);
+        if (audio.ctx && audio.ctx.state !== "running") audio.ctx.resume().catch(() => {});
         uploadLocation(true);
         render();
       } else {
@@ -291,26 +385,61 @@
     el.setupView.hidden = true;
     el.mainView.hidden = false;
     el.topbarSub.textContent = `Du bist ${state.session.name}`;
+    // Pausiert/Alarm ueberleben einen Neustart.
+    state.sharing = state.session.sharing !== false;
+    state.alert = state.session.alert && state.session.alert.active ? state.session.alert : null;
+    state.sosActive = Boolean(state.alert);
+    applySharingUi();
     rebuildGroup();
     render();
     initMap();
     startGeolocation();
     startPolling();
     watchBattery();
-    if (!net.client) {
-      connectGroup(state.session)
-        .then(() => uploadLocation(true))
-        .catch(error => toast(error.message || "Keine Verbindung."));
-    } else {
-      uploadLocation(true);
-    }
+    if (net.client) uploadLocation(true);
+    else ensureConnected(0);
+  }
+
+  /**
+   * Stellt die Verbindung her und versucht es bei Fehlern mit wachsendem Abstand weiter.
+   * Wird beim Start, bei "online", beim Sichtbarwerden und von "Neu verbinden" aufgerufen.
+   */
+  function ensureConnected(delayMs) {
+    if (!state.session || net.client || net.connecting) return;
+    clearTimeout(net.retryTimer);
+    net.retryTimer = setTimeout(async () => {
+      if (!state.session || net.client || net.connecting) return;
+      net.connecting = true;
+      setNetStatus();
+      try {
+        await connectGroup(state.session);
+        net.retryCount = 0;
+        net.failReason = "";
+        setNetStatus();
+        uploadLocation(true);
+      } catch (error) {
+        net.failReason = error.message || "Keine Verbindung.";
+        const wait = RETRY_DELAYS_MS[Math.min(net.retryCount, RETRY_DELAYS_MS.length - 1)];
+        net.retryCount++;
+        setNetStatus();
+        if (state.session) ensureConnected(wait);
+      } finally {
+        net.connecting = false;
+        setNetStatus();
+      }
+    }, Math.max(0, delayMs || 0));
+  }
+
+  function applySharingUi() {
+    el.shareToggle.classList.toggle("is-on", state.sharing);
+    el.shareToggle.querySelector(".toggle-state").textContent = state.sharing ? "AN" : "AUS";
   }
 
   /** Baut state.group aus den empfangenen Mitgliedern, den Gruppendaten und dem eigenen Zustand. */
   function rebuildGroup() {
     if (!state.session) return;
     const cutoff = Date.now() - MEMBER_MAX_AGE_MS;
-    const others = [...net.members.values()].filter(member => member.id !== state.session.memberId && Date.parse(member.lastSeen || 0) > cutoff);
+    const others = [...net.members.values()].filter(member => member.id !== state.session.memberId && memberTime(member, member.lastSeen) > cutoff);
     state.group = {
       code: state.session.code,
       name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
@@ -337,6 +466,17 @@
       alert: state.alert,
       lastSeen: new Date().toISOString()
     };
+  }
+
+  /** Zeitpunkt eines Mitglieds in unserer Uhr: Versatz der Senderuhr (bei Live-Nachrichten gemessen) wird herausgerechnet. */
+  function memberTime(member, iso) {
+    const time = Date.parse(iso || "");
+    if (!Number.isFinite(time)) return 0;
+    return time + (Number.isFinite(member.skew) ? member.skew : 0);
+  }
+
+  function isOffline(member) {
+    return Date.now() - memberTime(member, member.lastSeen) > OFFLINE_MS;
   }
 
   function myMember() {
@@ -374,13 +514,18 @@
     if (newAlerts.length) notifyAlert(newAlerts[0]);
 
     el.alertBanner.hidden = !alerts.length;
-    if (!alerts.length) return;
+    if (!alerts.length) {
+      stopAlarmSound();
+      audio.muted = false;
+      el.alertMute.textContent = "Ton stumm";
+      return;
+    }
     const first = alerts[0];
     el.alertTitle.textContent = alerts.length === 1 ? `${first.name} ruft: Finde mich!` : `${alerts.length} Personen rufen um Hilfe`;
     const parts = [];
     if (first.alert?.message) parts.push(first.alert.message);
     if (first.lat !== null && state.position) parts.push(`${formatDistance(distanceMeters(state.position, first))} entfernt`);
-    parts.push(`zuletzt ${formatAgo(first.lastSeen)}`);
+    parts.push(`zuletzt ${formatAgo(memberTime(first, first.lastSeen))}`);
     el.alertText.textContent = parts.join(" | ");
     el.alertNavigate.hidden = first.lat === null;
   }
@@ -397,10 +542,14 @@
   }
 
   function renderMembers() {
+    const distanceTo = member => (member.lat !== null && state.position ? distanceMeters(state.position, member) : Infinity);
     const members = [...state.group.members].sort((a, b) => {
       if (a.id === state.session.memberId) return -1;
       if (b.id === state.session.memberId) return 1;
       if (Boolean(a.alert?.active) !== Boolean(b.alert?.active)) return a.alert?.active ? -1 : 1;
+      if (isOffline(a) !== isOffline(b)) return isOffline(a) ? 1 : -1;
+      const byDistance = distanceTo(a) - distanceTo(b);
+      if (Number.isFinite(byDistance) && byDistance !== 0) return byDistance;
       return a.name.localeCompare(b.name, "de");
     });
 
@@ -408,7 +557,7 @@
     members.forEach(member => {
       const isMe = member.id === state.session.memberId;
       const item = document.createElement("li");
-      item.className = `member-item${member.alert?.active ? " is-alert" : ""}`;
+      item.className = `member-item${member.alert?.active ? " is-alert" : ""}${!isMe && isOffline(member) ? " is-offline" : ""}`;
       item.dataset.member = member.id;
 
       const avatar = document.createElement("div");
@@ -453,7 +602,7 @@
     if (members.length === 1) {
       const empty = document.createElement("li");
       empty.className = "member-empty";
-      empty.textContent = "Du bist noch allein. Teile den Code, damit andere beitreten koennen.";
+      empty.textContent = "Du bist noch allein. Teile den Code, damit andere beitreten können.";
       el.memberList.appendChild(empty);
     }
   }
@@ -467,9 +616,9 @@
     } else if (member.lat === null) {
       parts.push("noch kein Standort");
     } else {
-      parts.push(`Ort ${formatAgo(member.locatedAt)}`);
+      parts.push(`Ort ${formatAgo(memberTime(member, member.locatedAt))}`);
     }
-    if (!isMe) parts.push(`online ${formatAgo(member.lastSeen)}`);
+    if (!isMe) parts.push(isOffline(member) ? `offline seit ${formatClock(memberTime(member, member.lastSeen))}` : `online ${formatAgo(memberTime(member, member.lastSeen))}`);
     if (member.battery !== null && member.battery !== undefined) parts.push(`Akku ${member.battery}%`);
     if (member.speed && member.speed > 0.8) parts.push(`${Math.round(member.speed * 3.6)} km/h`);
     return parts.join(" | ");
@@ -496,7 +645,7 @@
     }).addTo(state.map);
     state.map.on("click", event => {
       if (!state.pickingMeeting) return;
-      const label = prompt("Name fuer den Treffpunkt:", "Treffpunkt") || "Treffpunkt";
+      const label = prompt("Name für den Treffpunkt:", "Treffpunkt") || "Treffpunkt";
       setPicking(false);
       setMeetingPoint(event.latlng.lat, event.latlng.lng, label);
     });
@@ -509,7 +658,7 @@
       if (member.lat === null || member.lng === null) return;
       seen.add(member.id);
       const isMe = member.id === state.session.memberId;
-      const stale = Date.now() - Date.parse(member.locatedAt || 0) > STALE_MS;
+      const stale = Date.now() - memberTime(member, member.locatedAt) > STALE_MS;
       const classes = ["fms-pin"];
       if (isMe) classes.push("is-me");
       if (member.alert?.active) classes.push("is-alert");
@@ -604,7 +753,7 @@
   // ---------- Geolocation ----------
   function startGeolocation() {
     if (!("geolocation" in navigator)) {
-      setGeoStatus("Dein Geraet unterstuetzt keine Standortabfrage.", "error");
+      setGeoStatus("Dein Gerät unterstützt keine Standortabfrage.", "error");
       return;
     }
     if (state.watchId !== null) return;
@@ -647,7 +796,7 @@
   function onPositionError(error) {
     const messages = {
       1: "Standort verweigert. Bitte in den Einstellungen erlauben.",
-      2: "Standort gerade nicht verfuegbar.",
+      2: "Standort gerade nicht verfügbar.",
       3: "Standortsuche dauert zu lange ..."
     };
     setGeoStatus(messages[error.code] || "Standortfehler.", "error");
@@ -662,7 +811,7 @@
     if (!state.session) return;
     const now = Date.now();
     const moved = state.position && state.lastUploadPos ? distanceMeters(state.position, state.lastUploadPos) : Infinity;
-    if (!force && now - state.lastUpload < MIN_UPLOAD_GAP_MS && moved < 15) return;
+    if (!force && (now - state.lastUpload < MIN_UPLOAD_GAP_MS || moved < 15)) return;
     state.lastUpload = now;
     if (state.sharing && state.position) state.lastUploadPos = { lat: state.position.lat, lng: state.position.lng };
     rebuildGroup();
@@ -670,17 +819,24 @@
     try {
       await publishSelf();
     } catch {
-      // Ohne Verbindung merkt sich MQTT.js die Nachricht und sendet sie nach dem Reconnect.
+      // Ohne Verbindung wird nichts gesendet; nach dem Verbinden geht der aktuelle Stand automatisch raus.
     }
   }
 
   function toggleSharing() {
-    state.sharing = !state.sharing;
-    el.shareToggle.classList.toggle("is-on", state.sharing);
-    el.shareToggle.querySelector(".toggle-state").textContent = state.sharing ? "AN" : "AUS";
+    setSharing(!state.sharing);
+    toast(state.sharing ? "Dein Standort wird wieder geteilt." : "Dein Standort ist pausiert.");
+  }
+
+  function setSharing(on) {
+    state.sharing = Boolean(on);
+    if (state.session) {
+      state.session.sharing = state.sharing;
+      saveSession();
+    }
+    applySharingUi();
     if (state.sharing) startGeolocation();
     uploadLocation(true);
-    toast(state.sharing ? "Dein Standort wird wieder geteilt." : "Dein Standort ist pausiert.");
   }
 
   function watchBattery() {
@@ -715,28 +871,26 @@
     if (activate) {
       message = prompt("Kurze Nachricht an alle (optional):", "Ich finde euch nicht. Bitte kommt zu mir!") || "";
     }
-    try {
-      if (activate && !state.sharing) {
-        state.sharing = true;
-        el.shareToggle.classList.add("is-on");
-        el.shareToggle.querySelector(".toggle-state").textContent = "AN";
-        startGeolocation();
-      }
-      state.alert = activate
-        ? { active: true, message: message.slice(0, 160), since: state.alert?.active ? state.alert.since : new Date().toISOString() }
-        : null;
-      state.sosActive = activate;
-      await uploadLocation(true);
-      vibrate(activate ? [200, 100, 200] : [80]);
-      toast(activate ? "Alarm gesendet. Alle in der Gruppe sehen dich jetzt." : "Alarm beendet.");
-    } catch (error) {
-      showError(error);
+    state.alert = activate
+      ? { active: true, message: message.slice(0, 160), since: state.alert?.active ? state.alert.since : new Date().toISOString() }
+      : null;
+    state.sosActive = activate;
+    state.session.alert = state.alert;
+    saveSession();
+    if (activate && !state.sharing) setSharing(true);
+    // Sofort Rueckmeldung geben; das Senden darf nie blockieren.
+    vibrate(activate ? [200, 100, 200] : [80]);
+    if (activate) {
+      toast(net.connected ? "Alarm gesendet. Alle in der Gruppe sehen dich jetzt." : "Alarm gesetzt. Er wird gesendet, sobald Verbindung besteht.");
+    } else {
+      toast("Alarm beendet.");
     }
+    uploadLocation(true).catch(() => {});
   }
 
   function notifyAlert(member) {
     vibrate([300, 120, 300, 120, 500]);
-    beep();
+    startAlarmSound();
     if ("Notification" in window && Notification.permission === "granted" && document.visibilityState !== "visible") {
       try {
         new Notification("Find Mein Soon", { body: `${member.name} ruft: Finde mich!`, icon: "icons/icon-192.png", tag: "fms-alert" });
@@ -755,25 +909,54 @@
     }
   }
 
-  function beep() {
+  function unlockAudio() {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (!Ctx) return;
-      const ctx = new Ctx();
-      const gain = ctx.createGain();
-      gain.gain.value = 0.08;
-      gain.connect(ctx.destination);
-      [0, 0.25, 0.5].forEach(offset => {
-        const osc = ctx.createOscillator();
-        osc.type = "square";
-        osc.frequency.value = 880;
-        osc.connect(gain);
-        osc.start(ctx.currentTime + offset);
-        osc.stop(ctx.currentTime + offset + 0.18);
-      });
-      setTimeout(() => ctx.close().catch(() => {}), 1200);
+      if (!audio.ctx) audio.ctx = new Ctx();
+      if (audio.ctx.state !== "running") audio.ctx.resume().catch(() => {});
     } catch {
     }
+  }
+
+  /** Sirenenartiger Ton, deutlich lauter als ein Piepser. */
+  function beep() {
+    try {
+      unlockAudio();
+      const ctx = audio.ctx;
+      if (!ctx || ctx.state !== "running") return;
+      const gain = ctx.createGain();
+      gain.gain.value = 0.4;
+      gain.connect(ctx.destination);
+      [[0, 880], [0.45, 660], [0.9, 880], [1.35, 660]].forEach(([offset, freq]) => {
+        const osc = ctx.createOscillator();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        osc.connect(gain);
+        osc.start(ctx.currentTime + offset);
+        osc.stop(ctx.currentTime + offset + 0.4);
+      });
+      setTimeout(() => { try { gain.disconnect(); } catch {} }, 2200);
+    } catch {
+    }
+  }
+
+  function startAlarmSound() {
+    if (audio.muted) return;
+    beep();
+    clearInterval(audio.repeatTimer);
+    audio.repeatTimer = setInterval(() => {
+      if (!activeAlerts().length || audio.muted) {
+        stopAlarmSound();
+        return;
+      }
+      beep();
+    }, ALARM_REPEAT_MS);
+  }
+
+  function stopAlarmSound() {
+    clearInterval(audio.repeatTimer);
+    audio.repeatTimer = null;
   }
 
   // ---------- Share / Navigation ----------
@@ -816,16 +999,22 @@
     saveSession();
     el.topbarSub.textContent = `Du bist ${state.session.name}`;
     await uploadLocation(true);
-    toast(`Du heisst jetzt ${state.session.name}.`);
+    toast(`Du heißt jetzt ${state.session.name}.`);
   }
 
   async function leaveGroup() {
+    // Erst Timer stoppen, damit kein Herzschlag den Eintrag nach dem Loeschen wieder anlegt.
+    state.leaving = true;
+    stopGeolocation();
+    stopPolling();
+    let removed = false;
     try {
-      await leaveNet();
+      removed = await Promise.race([leaveNet(), new Promise(resolve => setTimeout(() => resolve(false), 3000))]);
     } catch {
     }
     clearSession();
-    toast("Du hast die Gruppe verlassen.");
+    state.leaving = false;
+    toast(removed ? "Du hast die Gruppe verlassen." : "Gruppe verlassen. Dein Eintrag beim Dienst verfällt automatisch.");
     showSetup();
   }
 
@@ -866,6 +1055,7 @@
   }
 
   function saveSession() {
+    if (!state.session) return;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.session)); } catch {}
   }
 
@@ -876,7 +1066,7 @@
     el.installCard.hidden = false;
     el.apkCard.hidden = !isAndroid;
     if (isIos) {
-      el.installHint.textContent = "Auf dem iPhone: Teilen-Symbol antippen und \"Zum Home-Bildschirm\" waehlen.";
+      el.installHint.textContent = "Auf dem iPhone: Teilen-Symbol antippen und \"Zum Home-Bildschirm\" wählen.";
     }
     window.addEventListener("beforeinstallprompt", event => {
       event.preventDefault();
@@ -907,7 +1097,10 @@
   }
 
   function setupNetworkIndicator() {
-    window.addEventListener("online", updateNetDot);
+    window.addEventListener("online", () => {
+      updateNetDot();
+      ensureConnected(0);
+    });
     window.addEventListener("offline", updateNetDot);
     updateNetDot();
   }
@@ -916,7 +1109,38 @@
     const online = navigator.onLine && (net.client ? net.connected : true);
     el.netDot.classList.toggle("is-online", online);
     el.netDot.classList.toggle("is-offline", !online);
-    el.netDot.title = net.client ? (net.connected ? "Verbunden" : "Verbindung wird aufgebaut ...") : (navigator.onLine ? "Online" : "Offline");
+    setNetStatus();
+  }
+
+  /** Lesbarer Verbindungsstatus unter dem Gruppennamen. */
+  function setNetStatus() {
+    let text;
+    let kind = "";
+    if (!navigator.onLine) {
+      text = "Offline. Kein Internet.";
+      kind = "bad";
+    } else if (net.client && net.connected) {
+      const host = brokerHost(net.brokers[net.brokerIndex] || "");
+      const ack = net.lastAck ? `, gesendet ${formatAgo(net.lastAck)}` : "";
+      text = `Verbunden über ${host}${ack}`;
+      kind = "ok";
+    } else if (net.connecting || net.client) {
+      text = "Verbindung wird aufgebaut ...";
+    } else if (net.failReason) {
+      text = `${net.failReason} Nächster Versuch folgt.`;
+      kind = "bad";
+    } else {
+      text = "";
+    }
+    if (el.netStatus) {
+      el.netStatus.textContent = text;
+      el.netStatus.className = `net-status${kind ? ` is-${kind}` : ""}`;
+    }
+    el.netDot.title = text || "Verbindung";
+  }
+
+  function brokerHost(url) {
+    try { return new URL(url).host.replace(/:\d+$/, ""); } catch { return url; }
   }
 
   function openMenu(open) {
@@ -933,12 +1157,17 @@
       const param = new URLSearchParams(location.search).get("broker");
       if (param) localStorage.setItem(BROKER_KEY, param);
       const stored = localStorage.getItem(BROKER_KEY);
-      if (stored) return [stored];
+      if (stored) return [stored, ...BROKERS.filter(url => url !== stored)];
     } catch {
     }
     return BROKERS;
   }
 
+  /**
+   * Verbindet mit dem ersten erreichbaren Broker. Der Haupt-Broker wird mehrfach versucht, damit alle
+   * Mitglieder moeglichst beim selben Dienst landen. Landet man doch auf einem Ersatz, wird regelmaessig
+   * zurueck zum Haupt-Broker gewechselt (probePrimary).
+   */
   async function connectGroup(session) {
     if (typeof mqtt === "undefined") throw new Error("Die Netzwerk-Bibliothek konnte nicht geladen werden.");
     disconnectNet();
@@ -947,47 +1176,90 @@
     net.root = `fms/v1/${secrets.topicId}`;
     net.members = new Map();
     net.meta = null;
+    net.brokers = brokerList();
 
     let lastError = null;
-    for (const url of brokerList()) {
-      try {
-        net.client = await connectBroker(url, session);
-        net.connected = true;
-        updateNetDot();
-        return;
-      } catch (error) {
-        lastError = error;
+    for (let index = 0; index < net.brokers.length; index++) {
+      const attempts = index === 0 ? 2 : 1;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        try {
+          net.client = await connectBroker(net.brokers[index], session);
+          net.brokerIndex = index;
+          net.connected = true;
+          updateNetDot();
+          if (index > 0) startPrimaryProbe(session);
+          return;
+        } catch (error) {
+          lastError = error;
+          if (!state.session && !state.pendingSession && !session) return;
+        }
       }
     }
-    throw new Error(lastError?.message || "Kein Verbindungsdienst erreichbar. Pruefe deine Internetverbindung.");
+    if (navigator.onLine) {
+      throw new Error("Kein Verbindungsdienst erreichbar. Dieses WLAN blockiert vermutlich die Verbindung, probiere mobile Daten.");
+    }
+    throw new Error(lastError?.message || "Keine Verbindung. Prüfe dein Internet.");
   }
 
-  function connectBroker(url, session) {
+  function startPrimaryProbe(session) {
+    clearInterval(net.probeTimer);
+    net.probeTimer = setInterval(async () => {
+      if (!net.client || net.brokerIndex <= 0 || net.connecting) return;
+      try {
+        const primary = await connectBroker(net.brokers[0], session);
+        // Umzug zum Haupt-Broker: alte Verbindung schliessen, Mitglieder aus den retained Nachrichten neu aufbauen.
+        const old = net.client;
+        net.client = primary;
+        net.brokerIndex = 0;
+        try { old.end(true); } catch {}
+        clearInterval(net.probeTimer);
+        net.probeTimer = null;
+        scheduleResync();
+        publishSelf().catch(() => {});
+        if (net.meta) publish(`${net.root}/meta`, net.meta, META_EXPIRY_S).catch(() => {});
+        updateNetDot();
+      } catch {
+        // Haupt-Broker weiterhin nicht erreichbar, spaeter erneut probieren.
+      }
+    }, PRIMARY_PROBE_MS);
+  }
+
+  function connectBroker(url, session, protocolVersion = 5) {
     return new Promise((resolve, reject) => {
-      const client = mqtt.connect(url, {
-        clientId: `fms-${session.memberId}-${randomId(4)}`,
+      const options = {
+        clientId: `fms-${randomId(8)}`,
         clean: true,
         keepalive: 30,
-        connectTimeout: 12000,
+        connectTimeout: 8000,
         reconnectPeriod: 3000,
-        protocolVersion: 4
-      });
+        protocolVersion
+      };
+      const client = mqtt.connect(url, options);
       let settled = false;
       const fail = error => {
         if (settled) return;
         settled = true;
+        clearTimeout(timer);
         try { client.end(true); } catch {}
-        reject(new Error(`Verbindung zu ${url} fehlgeschlagen${error?.message ? ` (${error.message})` : ""}.`));
+        const message = String(error?.message || "");
+        if (protocolVersion === 5 && /protocol/i.test(message)) {
+          // Broker kann kein MQTT 5: mit Version 3.1.1 erneut versuchen.
+          connectBroker(url, session, 4).then(resolve, reject);
+          return;
+        }
+        reject(new Error(`Verbindung zu ${brokerHost(url)} fehlgeschlagen${message ? ` (${message})` : ""}.`));
       };
-      const timer = setTimeout(() => fail(new Error("Zeitueberschreitung")), 15000);
+      const timer = setTimeout(() => fail(new Error("Zeitüberschreitung")), 10000);
 
       client.on("connect", () => {
         net.connected = true;
-        updateNetDot();
         if (settled) {
           // Reconnect: bei clean=true muss neu abonniert und der eigene Stand erneut gesendet werden.
           client.subscribe(`${net.root}/#`, { qos: 1 });
+          scheduleResync();
           publishSelf().catch(() => {});
+          if (net.meta) publish(`${net.root}/meta`, net.meta, META_EXPIRY_S).catch(() => {});
+          updateNetDot();
           return;
         }
         client.subscribe(`${net.root}/#`, { qos: 1 }, error => {
@@ -999,36 +1271,75 @@
           settled = true;
           resolve(client);
         });
+        updateNetDot();
       });
-      client.on("message", (topic, payload) => handleMessage(topic, payload));
+      client.on("message", (topic, payload, packet) => {
+        if (net.client === client || !settled) handleMessage(topic, payload, packet);
+      });
       client.on("error", error => {
         if (!settled) fail(error);
       });
       client.on("close", () => {
-        net.connected = false;
-        updateNetDot();
+        if (net.client === client) {
+          net.connected = false;
+          updateNetDot();
+        }
       });
       client.on("offline", () => {
-        net.connected = false;
-        updateNetDot();
+        if (net.client === client) {
+          net.connected = false;
+          updateNetDot();
+        }
       });
     });
+  }
+
+  /**
+   * Nach einem Wiederverbinden liefert der Broker alle retained Eintraege sofort erneut. Wer danach nicht
+   * wieder auftaucht, hat die Gruppe inzwischen verlassen und wird aus der Liste entfernt.
+   */
+  function scheduleResync() {
+    const started = Date.now();
+    clearTimeout(net.resyncTimer);
+    net.resyncTimer = setTimeout(() => {
+      let changed = false;
+      for (const [id, member] of net.members) {
+        if ((member.receivedAt || 0) < started) {
+          net.members.delete(id);
+          changed = true;
+        }
+      }
+      if (changed) {
+        rebuildGroup();
+        render();
+      }
+    }, 5000);
   }
 
   function disconnectNet() {
     if (net.client) {
       try { net.client.end(true); } catch {}
     }
+    clearTimeout(net.retryTimer);
+    clearInterval(net.probeTimer);
+    clearTimeout(net.resyncTimer);
+    net.retryTimer = null;
+    net.probeTimer = null;
+    net.resyncTimer = null;
     net.client = null;
     net.connected = false;
+    net.connecting = false;
     net.key = null;
     net.root = null;
     net.members = new Map();
     net.meta = null;
+    net.brokerIndex = -1;
+    net.lastAck = 0;
+    net.failReason = "";
     updateNetDot();
   }
 
-  async function handleMessage(topic, payload) {
+  async function handleMessage(topic, payload, packet) {
     if (!net.root || !topic.startsWith(`${net.root}/`)) return;
     const sub = topic.slice(net.root.length + 1);
     if (!/^[a-z0-9]+$/.test(sub)) return;
@@ -1049,18 +1360,20 @@
     if (!data || typeof data !== "object") return;
 
     if (sub === "meta") {
-      if (!net.meta || Number(data.ts || 0) >= Number(net.meta.ts || 0)) {
-        net.meta = {
-          name: cleanText(data.name, 40) || null,
-          meetingPoint: sanitizeMeeting(data.meetingPoint),
-          ts: Number(data.ts || 0)
-        };
-      }
+      // Der Broker liefert Nachrichten in der Reihenfolge, in der er sie angenommen hat: die letzte gilt.
+      net.meta = {
+        name: cleanText(data.name, 40) || net.meta?.name || null,
+        meetingPoint: sanitizeMeeting(data.meetingPoint),
+        ts: Number(data.ts || 0)
+      };
     } else {
       if (sub === state.session?.memberId) return; // eigener Eintrag: der lokale Zustand ist aktueller
       const existing = net.members.get(sub);
-      if (existing && Number(data.ts || 0) < Number(existing.ts || 0)) return;
-      net.members.set(sub, sanitizeMember(sub, data));
+      const member = sanitizeMember(sub, data);
+      if (existing && member.ts < existing.ts) return;
+      // Uhrenversatz nur aus Live-Nachrichten ableiten; retained Nachrichten koennen beliebig alt sein.
+      member.skew = packet && !packet.retain && member.ts ? Date.now() - member.ts : (existing ? existing.skew : undefined);
+      net.members.set(sub, member);
     }
     rebuildGroup();
     render();
@@ -1085,7 +1398,8 @@
       alert: data.alert && data.alert.active ? { active: true, message: cleanText(data.alert.message, 160), since: String(data.alert.since || "") } : null,
       locatedAt: typeof data.locatedAt === "string" ? data.locatedAt : null,
       lastSeen: typeof data.lastSeen === "string" ? data.lastSeen : new Date().toISOString(),
-      ts: Number(data.ts || 0)
+      ts: Number(data.ts || 0),
+      receivedAt: Date.now()
     };
   }
 
@@ -1102,9 +1416,9 @@
   }
 
   async function publishSelf() {
-    if (!net.client || !state.session) return;
+    if (!net.client || !state.session || state.leaving) return;
     const me = { ...buildMe(), ts: Date.now() };
-    await publish(`${net.root}/${state.session.memberId}`, me);
+    await publish(`${net.root}/${state.session.memberId}`, me, MEMBER_EXPIRY_S);
   }
 
   async function publishMeta(changes) {
@@ -1118,7 +1432,7 @@
     net.meta = meta;
     rebuildGroup();
     render();
-    await publish(`${net.root}/meta`, meta);
+    await publish(`${net.root}/meta`, meta, META_EXPIRY_S);
   }
 
   function setMeetingPoint(lat, lng, label) {
@@ -1126,15 +1440,28 @@
   }
 
   async function leaveNet() {
-    if (!net.client || !state.session) return;
+    if (!net.client || !state.session || !net.connected) return false;
     // Leere retained Nachricht loescht den eigenen Eintrag beim Broker.
-    await new Promise(resolve => net.client.publish(`${net.root}/${state.session.memberId}`, "", { qos: 1, retain: true }, () => resolve()));
+    return new Promise(resolve => net.client.publish(`${net.root}/${state.session.memberId}`, "", { qos: 1, retain: true }, error => resolve(!error)));
   }
 
-  async function publish(topic, data) {
+  /** Sendet verschluesselt und retained. Ohne Verbindung wird nichts gepuffert: nach dem Verbinden geht der aktuelle Stand raus. */
+  async function publish(topic, data, expirySeconds) {
+    if (!net.client || !net.connected) return;
     const body = await encrypt(data);
+    const client = net.client;
+    const options = { qos: 1, retain: true };
+    if (client.options?.protocolVersion === 5 && expirySeconds) options.properties = { messageExpiryInterval: expirySeconds };
     return new Promise((resolve, reject) => {
-      net.client.publish(topic, body, { qos: 1, retain: true }, error => (error ? reject(error) : resolve()));
+      client.publish(topic, body, options, error => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        net.lastAck = Date.now();
+        setNetStatus();
+        resolve();
+      });
     });
   }
 
@@ -1178,6 +1505,17 @@
     return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, CODE_LENGTH);
   }
 
+  /** Holt den Code auch aus eingefuegtem Einladungstext oder einem Link heraus. */
+  function extractCode(value) {
+    const raw = String(value || "");
+    const fromLink = raw.match(/join=([A-Za-z0-9]{8})/);
+    if (fromLink) return cleanCode(fromLink[1]);
+    const upper = raw.toUpperCase();
+    const alphabetToken = upper.match(new RegExp(`(?:^|[^A-Z0-9])([${CODE_ALPHABET}]{${CODE_LENGTH}})(?:[^A-Z0-9]|$)`));
+    if (alphabetToken && upper.replace(/[^A-Z0-9]/g, "").length > CODE_LENGTH) return alphabetToken[1];
+    return cleanCode(raw);
+  }
+
   function randomId(bytes) {
     return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), byte => byte.toString(16).padStart(2, "0")).join("");
   }
@@ -1217,9 +1555,14 @@
     return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0).replace(".", ",")} km`;
   }
 
+  function formatClock(time) {
+    if (!Number.isFinite(time) || !time) return "?";
+    return new Date(time).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  }
+
   function formatAgo(iso) {
-    const time = Date.parse(iso || "");
-    if (!Number.isFinite(time)) return "nie";
+    const time = typeof iso === "number" ? iso : Date.parse(iso || "");
+    if (!Number.isFinite(time) || !time) return "nie";
     const diff = Date.now() - time;
     if (diff < 20000) return "gerade eben";
     if (diff < 60000) return `vor ${Math.round(diff / 1000)} Sek.`;

@@ -834,3 +834,45 @@ a {
     display: none;
   }
 }
+
+/* Stufe A: Verbindungsstatus, Alarm-Knoepfe, Offline-Mitglieder */
+.net-status {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.net-status.is-ok {
+  color: var(--aqua);
+}
+
+.net-status.is-bad {
+  color: #ff8794;
+}
+
+.alert-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.alert-mute {
+  border: 1px solid rgba(255, 255, 255, .5);
+  background: transparent;
+  color: #fff;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.member-item.is-offline {
+  opacity: .6;
+}
+
+.member-item.is-offline .member-avatar {
+  filter: grayscale(1);
+}
