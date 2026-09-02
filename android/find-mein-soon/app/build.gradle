@@ -31,7 +31,8 @@ android {
                 storeFile file(keystorePath)
                 storePassword findProperty("keystorePassword")?.toString()
                 keyAlias findProperty("keyAlias")?.toString()
-                keyPassword findProperty("keyPassword")?.toString()
+                // PKCS12-Keystores (Standard von keytool seit JDK 9) kennen kein eigenes Schluessel-Passwort.
+                keyPassword (findProperty("keyPassword") ?: findProperty("keystorePassword"))?.toString()
             }
         }
     }

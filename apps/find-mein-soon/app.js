@@ -7,7 +7,9 @@
   const OFFLINE_MS = 15 * 60 * 1000;
   // Die Android-App (android/find-mein-soon) haengt diesen Marker an den User-Agent.
   const isNativeApp = /FindMeinSoonApp\//.test(navigator.userAgent);
-  const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
+  // iPads ab iPadOS 13 melden sich als Mac, sind aber an den Touchpunkten erkennbar.
+  const isIos = (/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) && !window.MSStream;
+  const isAndroid = /Android/i.test(navigator.userAgent);
 
   const $ = id => document.getElementById(id);
   const el = {
@@ -849,7 +851,7 @@
     const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
     if (standalone || isNativeApp) return;
     el.installCard.hidden = false;
-    el.apkCard.hidden = isIos;
+    el.apkCard.hidden = !isAndroid;
     if (isIos) {
       el.installHint.textContent = "Auf dem iPhone: Teilen-Symbol antippen und \"Zum Home-Bildschirm\" waehlen.";
     }

@@ -493,6 +493,12 @@ function serveStatic(req, res, url) {
   }
   let filePath = requested;
   if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
+    if (!url.pathname.endsWith("/")) {
+      // Ordner immer mit Schraegstrich ausliefern, sonst zeigen relative Pfade (app.js, sw.js, ...) ins Leere.
+      res.writeHead(301, { Location: `${url.pathname}/${url.search}` });
+      res.end();
+      return;
+    }
     filePath = path.join(filePath, "index.html");
   }
   if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) {

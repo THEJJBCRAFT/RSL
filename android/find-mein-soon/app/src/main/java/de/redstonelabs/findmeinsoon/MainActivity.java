@@ -61,6 +61,10 @@ public class MainActivity extends Activity {
 
         setupWebView();
 
+        // Standort-Entscheidungen nicht in der WebView speichern: die Android-Berechtigung
+        // wird bei jedem Start neu geprueft (siehe onGeolocationPermissionsShowPrompt).
+        GeolocationPermissions.getInstance().clearAll();
+
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             loadApp(getIntent());
         }
@@ -83,17 +87,8 @@ public class MainActivity extends Activity {
         webView.saveState(outState);
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        webView.onResume();
-    }
-
-    @Override
-    protected void onPause() {
-        webView.onPause();
-        super.onPause();
-    }
+    // Bewusst kein webView.onPause(): das wuerde JavaScript-Timer und die Standortabfrage anhalten,
+    // sobald der Bildschirm ausgeht. So laufen Standort-Updates weiter, solange Android die App am Leben laesst.
 
     @Override
     protected void onDestroy() {
@@ -120,7 +115,8 @@ public class MainActivity extends Activity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode != REQUEST_LOCATION || pendingGeoCallback == null) return;
         boolean granted = hasLocationPermission();
-        pendingGeoCallback.invoke(pendingGeoOrigin, granted, granted);
+        // retain=false: nicht dauerhaft merken, damit eine spaeter entzogene Android-Berechtigung neu abgefragt wird.
+        pendingGeoCallback.invoke(pendingGeoOrigin, granted, false);
         pendingGeoCallback = null;
         pendingGeoOrigin = null;
         if (!granted) {
@@ -135,7 +131,6 @@ public class MainActivity extends Activity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
         settings.setGeolocationEnabled(true);
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
@@ -181,7 +176,7 @@ public class MainActivity extends Activity {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (hasLocationPermission()) {
-                    callback.invoke(origin, true, true);
+                    callback.invoke(origin, true, false);
                     return;
                 }
                 pendingGeoOrigin = origin;
@@ -321,7 +316,11 @@ public class MainActivity extends Activity {
         if (!value.matches("(?i)^https?://.*")) value = "https://" + value;
         Uri uri = Uri.parse(value);
         if (uri.getHost() == null || uri.getHost().isEmpty()) return null;
-        if (!value.endsWith("/") && (uri.getPath() == null || uri.getPath().isEmpty())) value = value + "/";
+        if (uri.getQuery() != null || uri.getFragment() != null) return value;
+        // Ordner-Adressen brauchen einen Schraegstrich am Ende, sonst stimmen die relativen Pfade der Web-App nicht.
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        String lastSegment = path.substring(path.lastIndexOf('/') + 1);
+        if (!value.endsWith("/") && !lastSegment.contains(".")) value = value + "/";
         return value;
     }
 }

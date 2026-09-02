@@ -36,7 +36,11 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Einladungslinks (…/apps/find-mein-soon/?join=CODE) koennen direkt in der App geoeffnet werden. -->
+            <!--
+                Einladungslinks (…/apps/find-mein-soon/?join=CODE) koennen in der App geoeffnet werden.
+                Ohne Digital Asset Links (assetlinks.json) muss der Nutzer das ab Android 12 einmalig unter
+                App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen" erlauben.
+            -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

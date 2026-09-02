@@ -13,5 +13,9 @@ android/**/build/
 android/**/.gradle/
 android/**/.idea/
 android/**/local.properties
-android/**/*.keystore
-android/**/*.jks
+
+# Signatur-Schluessel duerfen nie ins Repository
+*.keystore
+*.jks
+*.keystore.b64
+*.b64
