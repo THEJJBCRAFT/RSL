@@ -914,13 +914,17 @@
       throw error;
     }
     let payload = {};
-    const contentType = response.headers.get("content-type") || "";
+    const isJson = (response.headers.get("content-type") || "").includes("application/json");
     try { payload = await response.json(); } catch {}
-    if (!response.ok || payload.ok === false) {
+    if (!response.ok || payload.ok === false || !isJson) {
       let message = payload.error;
-      if (!message && !contentType.includes("application/json")) {
-        // Statischer Host (z. B. GitHub Pages) ohne laufendes server.js: die API antwortet mit einer HTML-/Textseite.
-        message = "Diese Website hat keinen Find-Mein-Soon-Server. server.js muss online laufen (z. B. auf Render), GitHub Pages allein reicht nicht.";
+      if (!message && !isJson) {
+        if (response.ok || response.status === 404 || response.status === 405) {
+          // Statischer Host (z. B. GitHub Pages) ohne laufendes server.js: die API antwortet mit einer HTML-/Textseite.
+          message = "Diese Website hat keinen Find-Mein-Soon-Server. server.js muss online laufen (z. B. auf Render), GitHub Pages allein reicht nicht.";
+        } else if (response.status >= 500) {
+          message = `Der Server antwortet gerade nicht (Fehler ${response.status}). Versuche es gleich nochmal.`;
+        }
       }
       const error = new Error(message || `Fehler ${response.status}`);
       error.status = response.status;

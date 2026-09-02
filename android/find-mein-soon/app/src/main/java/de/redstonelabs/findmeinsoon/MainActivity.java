@@ -45,6 +45,13 @@ public class MainActivity extends Activity {
     private View errorView;
     private TextView errorText;
     private boolean mainFrameFailed;
+    // URL der Navigation, fuer die ein Fehler gemeldet wurde: onReceivedHttpError kommt VOR onPageStarted
+    // derselben Navigation, deshalb darf onPageStarted die Markierung dafuer nicht zuruecksetzen.
+    private String failedUrl;
+    // Zaehlt Navigationen, damit ein spaeter Callback von evaluateJavascript nicht zu einer neueren Seite gehoert.
+    private int loadGeneration;
+    // true, wenn wir selbst die App-Adresse laden: dann wird die naechste geladene Seite auf die App geprueft.
+    private boolean expectApp;
     private String pendingGeoOrigin;
     private GeolocationPermissions.Callback pendingGeoCallback;
 
@@ -76,8 +83,7 @@ public class MainActivity extends Activity {
         setIntent(intent);
         Uri data = intent.getData();
         if (data != null && isAppUrl(data)) {
-            hideError();
-            webView.loadUrl(data.toString());
+            startLoad(data.toString());
         }
     }
 
@@ -147,22 +153,24 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                mainFrameFailed = false;
+                loadGeneration++;
+                if (failedUrl == null || !failedUrl.equals(url)) {
+                    mainFrameFailed = false;
+                    failedUrl = null;
+                }
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request.isForMainFrame()) {
-                    mainFrameFailed = true;
-                    showError(getString(R.string.error_network, String.valueOf(error.getDescription())));
+                    markFailed(request.getUrl().toString(), getString(R.string.error_network, String.valueOf(error.getDescription())));
                 }
             }
 
             @Override
             public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
                 if (request.isForMainFrame() && response.getStatusCode() >= 400) {
-                    mainFrameFailed = true;
-                    showError(getString(R.string.error_http, response.getStatusCode()));
+                    markFailed(request.getUrl().toString(), getString(R.string.error_http, response.getStatusCode()));
                 }
             }
 
@@ -170,7 +178,10 @@ public class MainActivity extends Activity {
             public void onPageFinished(WebView view, String url) {
                 if (mainFrameFailed) return;
                 hideError();
-                if (url != null && url.startsWith(getAppUrl())) verifyAppLoaded(view);
+                boolean isWebPage = url != null && (url.startsWith("http://") || url.startsWith("https://"));
+                boolean check = isAppPage(url) || (expectApp && isWebPage);
+                if (isWebPage) expectApp = false;
+                if (check) verifyAppLoaded(view, url, loadGeneration);
             }
         });
 
@@ -231,18 +242,46 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    private void markFailed(String url, String message) {
+        mainFrameFailed = true;
+        failedUrl = url;
+        showError(message);
+    }
+
     /**
      * Prueft nach dem Laden, ob unter der Adresse wirklich Find Mein Soon liegt. Hosting-Dienste antworten bei
      * falscher Adresse gern mit einer Textseite wie "Not Found" (auch mit Status 200), die sonst als App durchginge.
      */
-    private void verifyAppLoaded(WebView view) {
+    private void verifyAppLoaded(WebView view, String finishedUrl, int generation) {
         view.evaluateJavascript(
                 "(function(){return !!(document.getElementById('app') && document.getElementById('setupForm'));})()",
                 value -> {
-                    if (mainFrameFailed || "true".equals(value)) return;
-                    mainFrameFailed = true;
-                    showError(getString(R.string.error_not_app, getAppUrl()));
+                    // null: Seite ist inzwischen weg; andere Generation: es laeuft schon eine neuere Navigation.
+                    if (webView == null || value == null || generation != loadGeneration || mainFrameFailed) return;
+                    if ("true".equals(value)) return;
+                    markFailed(finishedUrl, getString(R.string.error_not_app, getAppUrl()));
                 });
+    }
+
+    /**
+     * Liegt die geladene Seite im App-Ordner? Vergleicht Host (ohne Gross-/Kleinschreibung) und Pfad-Praefix,
+     * ignoriert Schema und Port, weil die WebView nach Weiterleitungen (z. B. http -> https) die endgueltige URL meldet.
+     */
+    private boolean isAppPage(String url) {
+        if (url == null) return false;
+        Uri page = Uri.parse(url);
+        Uri app = Uri.parse(getAppUrl());
+        if (page.getHost() == null || app.getHost() == null || !page.getHost().equalsIgnoreCase(app.getHost())) return false;
+        String appPath = folderPath(app.getPath());
+        String pagePath = page.getPath() == null || page.getPath().isEmpty() ? "/" : page.getPath();
+        return pagePath.startsWith(appPath);
+    }
+
+    private static String folderPath(String path) {
+        String value = path == null || path.isEmpty() ? "/" : path;
+        if (value.endsWith("/index.html")) value = value.substring(0, value.length() - "index.html".length());
+        if (!value.endsWith("/")) value = value + "/";
+        return value;
     }
 
     private boolean isAppUrl(Uri uri) {
@@ -269,9 +308,15 @@ public class MainActivity extends Activity {
     // ---------- Laden / Fehler ----------
 
     private void loadApp(Intent intent) {
-        hideError();
         Uri data = intent == null ? null : intent.getData();
-        String url = data != null && isAppUrl(data) ? data.toString() : getAppUrl();
+        startLoad(data != null && isAppUrl(data) ? data.toString() : getAppUrl());
+    }
+
+    private void startLoad(String url) {
+        mainFrameFailed = false;
+        failedUrl = null;
+        expectApp = true;
+        hideError();
         webView.loadUrl(url);
     }
 
