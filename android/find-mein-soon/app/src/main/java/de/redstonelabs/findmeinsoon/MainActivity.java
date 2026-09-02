@@ -156,6 +156,7 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
             }
             if (granted && sharingWanted) startSharingService();
             if (!granted) Toast.makeText(this, R.string.location_denied, Toast.LENGTH_LONG).show();
+            if (webView != null) webView.evaluateJavascript("window.fmsPermission && window.fmsPermission(" + granted + ")", null);
         } else if (requestCode == REQUEST_NOTIFICATIONS) {
             if (sharingWanted) startSharingService();
         }
@@ -312,6 +313,18 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         @JavascriptInterface
         public String version() {
             return BuildConfig.VERSION_NAME;
+        }
+
+        /** "granted" oder "denied"; die Web-App zeigt vor der Abfrage eine Erklaerung. */
+        @JavascriptInterface
+        public String locationPermission() {
+            return hasLocationPermission() ? "granted" : "denied";
+        }
+
+        /** Stromsparmodus des Standort-Dienstes (im Stillstand Netz-Standort statt GPS). */
+        @JavascriptInterface
+        public void setLowPower(boolean on) {
+            runOnUiThread(() -> ShareService.setLowPower(MainActivity.this, on));
         }
 
         @JavascriptInterface

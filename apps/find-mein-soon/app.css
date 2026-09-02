@@ -258,7 +258,7 @@ a {
 }
 
 .ghost-button.small {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   font-size: 13px;
 }
@@ -953,4 +953,72 @@ a {
 .menu-note {
   margin: 8px 0 0 !important;
   font-size: 12px !important;
+}
+
+/* Stufe D: Bedienung */
+body.map-light .leaflet-tile-pane {
+  filter: none;
+}
+
+.member-accuracy {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.member-distance a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 6px;
+}
+
+.inline-card {
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+
+.inline-card p {
+  margin: 4px 0 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.share-panel {
+  text-align: center;
+}
+
+.share-code {
+  display: block;
+  margin: 8px 0 12px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 30px;
+  letter-spacing: .12em;
+  color: var(--aqua);
+  user-select: all;
+  -webkit-user-select: all;
+}
+
+.share-qr {
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 12px;
+}
+
+.share-qr svg {
+  width: min(62vw, 240px);
+  height: auto;
+  background: #fff;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+#iosCardCode {
+  font-family: "Consolas", "Courier New", monospace;
+  color: var(--aqua);
+  letter-spacing: .1em;
+}
+
+.geo-status.is-warn {
+  color: var(--gold, #ffd166);
 }

@@ -13,6 +13,7 @@ import android.content.pm.ServiceInfo;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.location.LocationRequest;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
@@ -29,10 +30,14 @@ public class ShareService extends Service {
 
     public static final String ACTION_START = "de.redstonelabs.findmeinsoon.START";
     public static final String ACTION_STOP = "de.redstonelabs.findmeinsoon.STOP";
+    public static final String ACTION_LOW_POWER = "de.redstonelabs.findmeinsoon.LOW_POWER";
+    public static final String ACTION_HIGH_ACCURACY = "de.redstonelabs.findmeinsoon.HIGH_ACCURACY";
     public static final String CHANNEL_SHARING = "sharing";
     private static final int NOTIFICATION_ID = 1;
     private static final long MIN_TIME_MS = 20000;
     private static final float MIN_DISTANCE_M = 15f;
+    private static final long LOW_MIN_TIME_MS = 60000;
+    private static final float LOW_MIN_DISTANCE_M = 50f;
 
     /** Empfaenger fuer Positionen (die MainActivity, solange sie lebt). */
     public interface PositionSink {
@@ -41,6 +46,7 @@ public class ShareService extends Service {
 
     private static PositionSink sink;
     private static boolean running;
+    private static boolean lowPower;
 
     private LocationManager locationManager;
     private PowerManager.WakeLock wakeLock;
@@ -83,6 +89,14 @@ public class ShareService extends Service {
         context.startService(new Intent(context, ShareService.class).setAction(ACTION_STOP));
     }
 
+    /** Im Stillstand reicht der Netz-Standort mit laengerem Intervall; bei Bewegung wieder GPS. */
+    public static void setLowPower(Context context, boolean on) {
+        if (lowPower == on) return;
+        lowPower = on;
+        if (!running) return;
+        context.startService(new Intent(context, ShareService.class).setAction(on ? ACTION_LOW_POWER : ACTION_HIGH_ACCURACY));
+    }
+
     @Override
     public IBinder onBind(Intent intent) {
         return null;
@@ -95,6 +109,12 @@ public class ShareService extends Service {
             PositionSink target = sink;
             if (target instanceof MainActivity) ((MainActivity) target).onSharingStoppedFromNotification();
             stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (ACTION_LOW_POWER.equals(action) || ACTION_HIGH_ACCURACY.equals(action)) {
+            lowPower = ACTION_LOW_POWER.equals(action);
+            if (running && locationManager != null) startLocationUpdates();
+            else if (!running) stopSelf();
             return START_NOT_STICKY;
         }
         if (!hasLocationPermission()) {
@@ -174,9 +194,20 @@ public class ShareService extends Service {
     private void startLocationUpdates() {
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if (locationManager == null) return;
+        long minTime = lowPower ? LOW_MIN_TIME_MS : MIN_TIME_MS;
+        float minDistance = lowPower ? LOW_MIN_DISTANCE_M : MIN_DISTANCE_M;
         try {
+            locationManager.removeUpdates(listener);
             for (String provider : providers()) {
-                locationManager.requestLocationUpdates(provider, MIN_TIME_MS, MIN_DISTANCE_M, listener);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    LocationRequest request = new LocationRequest.Builder(minTime)
+                            .setMinUpdateDistanceMeters(minDistance)
+                            .setQuality(lowPower ? LocationRequest.QUALITY_LOW_POWER : LocationRequest.QUALITY_HIGH_ACCURACY)
+                            .build();
+                    locationManager.requestLocationUpdates(provider, request, getMainExecutor(), listener);
+                } else {
+                    locationManager.requestLocationUpdates(provider, minTime, minDistance, listener);
+                }
             }
         } catch (SecurityException error) {
             stopSelf();
@@ -189,8 +220,14 @@ public class ShareService extends Service {
             providers.add(LocationManager.FUSED_PROVIDER);
             return providers;
         }
-        if (locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) providers.add(LocationManager.GPS_PROVIDER);
-        if (locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) providers.add(LocationManager.NETWORK_PROVIDER);
+        boolean network = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        boolean gps = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if (lowPower && network) {
+            providers.add(LocationManager.NETWORK_PROVIDER); // Stromsparmodus: kein GPS
+            return providers;
+        }
+        if (gps) providers.add(LocationManager.GPS_PROVIDER);
+        if (network) providers.add(LocationManager.NETWORK_PROVIDER);
         return providers;
     }
 

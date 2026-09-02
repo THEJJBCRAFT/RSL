@@ -1,4 +1,4 @@
-const CACHE_NAME = "find-mein-soon-v3";
+const CACHE_NAME = "find-mein-soon-v4";
 const SHELL = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const SHELL = [
   "./vendor/leaflet/leaflet.css",
   "./vendor/leaflet/leaflet.js",
   "./vendor/mqtt/mqtt.min.js",
+  "./vendor/qrcode/qrcode.js",
   "./vendor/leaflet/images/marker-icon.png",
   "./vendor/leaflet/images/marker-shadow.png"
 ];

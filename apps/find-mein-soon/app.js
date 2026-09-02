@@ -37,6 +37,20 @@
   const nativeBridge = typeof window.FindMeinSoonNative === "object" && window.FindMeinSoonNative ? window.FindMeinSoonNative : null;
   const NOTIFY_DISMISS_KEY = "findMeinSoon.notifyDismissed";
   const DEFAULT_ALERT_MESSAGE = "Ich finde euch nicht. Bitte kommt zu mir!";
+  const APP_VERSION = "2.1.0";
+  const PROTOCOL_VERSION = 2; // steht in jeder Nachricht, damit alte und neue Apps sich nicht stumm missverstehen
+  const MAP_STYLE_KEY = "findMeinSoon.mapStyle";
+  const UPDATE_CHECK_KEY = "findMeinSoon.updateCheck";
+  const IOS_HINT_KEY = "findMeinSoon.iosHintDismissed";
+  const UPDATE_CHECK_INTERVAL_MS = 12 * 60 * 60 * 1000;
+  const RELEASE_API_URL = "https://api.github.com/repos/THEJJBCRAFT/RSL/releases/tags/find-mein-soon-latest";
+  const APK_URL = "https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk";
+  const ANDROID_PACKAGE = "de.redstonelabs.findmeinsoon";
+  const STILL_MS = 5 * 60 * 1000; // ohne Bewegung: Standort mit geringer Genauigkeit (Akku)
+  const TRAIL_MAX_AGE_MS = 30 * 60 * 1000;
+  const TRAIL_MAX_POINTS = 80;
+  const LOW_BATTERY = 20;
+  const APPROX_ACCURACY_M = 200;
 
   const $ = id => document.getElementById(id);
   const el = {
@@ -113,7 +127,32 @@
     meetingNavigate: $("meetingNavigate"),
     meetingClear: $("meetingClear"),
     memberList: $("memberList"),
-    toast: $("toast")
+    toast: $("toast"),
+    geoCard: $("geoCard"),
+    geoCardText: $("geoCardText"),
+    geoAllow: $("geoAllow"),
+    geoSettings: $("geoSettings"),
+    shareSheet: $("shareSheet"),
+    shareSheetCode: $("shareSheetCode"),
+    shareQr: $("shareQr"),
+    shareSend: $("shareSend"),
+    shareClose: $("shareClose"),
+    openInAppCard: $("openInAppCard"),
+    openInAppLink: $("openInAppLink"),
+    updateCard: $("updateCard"),
+    updateText: $("updateText"),
+    updateLink: $("updateLink"),
+    updateLater: $("updateLater"),
+    iosCard: $("iosCard"),
+    iosCardCode: $("iosCardCode"),
+    iosCopy: $("iosCopy"),
+    iosLater: $("iosLater"),
+    zoomIn: $("zoomIn"),
+    zoomOut: $("zoomOut"),
+    mapStyle: $("mapStyle"),
+    menuVersion: $("menuVersion"),
+    menuTimed: $("menuTimed"),
+    menuUpdate: $("menuUpdate")
   };
 
   const state = {
@@ -142,7 +181,18 @@
     pendingSession: null,
     leaving: false,
     responding: null,
-    dialogResolve: null
+    dialogResolve: null,
+    geoAsked: false,
+    lastMoveAt: 0,
+    lastMovePos: null,
+    lowPower: false,
+    trails: new Map(),
+    trailLines: new Map(),
+    accuracyCircles: new Map(),
+    batteryWarned: new Set(),
+    ownBatteryWarned: false,
+    protoHintShown: false,
+    updateBuild: 0
   };
 
   // Verbindung zur Gruppe (serverlos ueber einen oeffentlichen MQTT-Broker).
@@ -182,6 +232,10 @@
     protocol: net.client?.options?.protocolVersion || null,
     version: net.protocol,
     root: net.root,
+    lowPower: state.lowPower,
+    watching: state.watchId !== null,
+    trails: [...state.trails.entries()].map(([id, points]) => [id, points.length]),
+    updateBuild: state.updateBuild,
     members: net.members.size,
     retries: net.retryCount,
     lastAck: net.lastAck
@@ -206,11 +260,20 @@
     const brokerParam = hash.get("broker") || query.get("broker");
     const joinParam = hash.get("join") || query.get("join");
     if (query.toString() || location.hash) history.replaceState(null, "", location.pathname);
-    if (joinParam && !state.session) {
+    const joinCode = joinParam ? extractCode(joinParam) : "";
+    if (joinCode && !state.session) {
       setMode("join");
-      el.setupCode.value = formatCode(extractCode(joinParam));
+      el.setupCode.value = formatCode(joinCode);
+      showOpenInApp(joinCode);
+    } else if (joinCode && state.session && joinCode !== state.session.code) {
+      offerGroupSwitch(joinCode);
+    } else if (joinCode && state.session) {
+      toast("Du bist schon in dieser Gruppe.");
     }
     if (brokerParam) offerBrokerOverride(brokerParam);
+    setupMapControls();
+    el.menuVersion.textContent = appVersionText();
+    checkForUpdate();
 
     // Hooks fuer die Android-App.
     window.fmsNativePosition = (lat, lng, accuracy, speed, heading, time) => {
@@ -219,6 +282,12 @@
     window.fmsSetSharing = on => {
       if (state.session) setSharing(Boolean(on));
     };
+    // Antwort der Android-App auf die Standort-Berechtigung.
+    window.fmsPermission = granted => {
+      if (!state.session) return;
+      if (granted) startWatch();
+      else showGeoCard("denied");
+    };
     window.fmsBack = () => {
       if (state.dialogResolve) {
         state.dialogResolve(null);
@@ -226,6 +295,10 @@
       }
       if (!el.menu.hidden) {
         openMenu(false);
+        return true;
+      }
+      if (!el.shareSheet.hidden) {
+        el.shareSheet.hidden = true;
         return true;
       }
       if (!el.privacy.hidden) {
@@ -243,6 +316,72 @@
       enterGroup();
     } else {
       showSetup();
+    }
+  }
+
+  /** Einladungslink, waehrend man schon in einer Gruppe ist: wechseln statt schweigen. */
+  async function offerGroupSwitch(code) {
+    const current = state.group?.name || state.session.groupName || formatCode(state.session.code);
+    const go = await dialog({
+      title: "Gruppe wechseln?",
+      text: `Du bist in "${current}". Diese Gruppe verlassen und der Gruppe mit dem Code ${formatCode(code)} beitreten?`,
+      ok: "Wechseln",
+      danger: true
+    });
+    if (!go) return;
+    const name = state.session.name;
+    await departGroup();
+    showSetup();
+    setMode("join");
+    el.setupName.value = name;
+    el.setupCode.value = formatCode(code);
+    showOpenInApp(code);
+    toast("Tippe auf „Gruppe beitreten“, um zu wechseln.");
+  }
+
+  /** Android-Browser: Einladung lieber in der installierten App oeffnen (intent://-Link, sonst APK-Download). */
+  function showOpenInApp(code) {
+    if (!isAndroid || isNativeApp || !code) return;
+    const app = new URL(PUBLIC_APP_URL);
+    el.openInAppLink.href = `intent://${app.host}${app.pathname}?join=${formatCode(code)}#Intent;scheme=https;package=${ANDROID_PACKAGE};S.browser_fallback_url=${encodeURIComponent(APK_URL)};end`;
+    el.openInAppCard.hidden = false;
+  }
+
+  function appVersionText() {
+    let native = null;
+    try { native = nativeBridge && typeof nativeBridge.version === "function" ? String(nativeBridge.version()) : null; } catch {}
+    return native ? `App ${native} · Web ${APP_VERSION}` : `Version ${APP_VERSION}`;
+  }
+
+  /** Nur die Android-App: einmal am Tag beim GitHub-Release nachsehen, ob es eine neuere APK gibt. */
+  async function checkForUpdate() {
+    if (!isNativeApp || !nativeBridge || typeof nativeBridge.version !== "function") return;
+    let own = 0;
+    try { own = Number((String(nativeBridge.version()).match(/(\d+)(?:-\w+)?$/) || [])[1]) || 0; } catch {}
+    if (!own) return;
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(UPDATE_CHECK_KEY) || "null"); } catch {}
+    let latest = cached && Date.now() - Number(cached.at || 0) < UPDATE_CHECK_INTERVAL_MS ? Number(cached.build) || 0 : 0;
+    if (!latest) {
+      try {
+        const response = await fetch(RELEASE_API_URL, { headers: { Accept: "application/vnd.github+json" } });
+        if (!response.ok) return;
+        const release = await response.json();
+        latest = Number((String(release.name || "").match(/Build (\d+)/) || [])[1]) || 0;
+        if (latest) {
+          try { localStorage.setItem(UPDATE_CHECK_KEY, JSON.stringify({ at: Date.now(), build: latest })); } catch {}
+        }
+      } catch {
+        return;
+      }
+    }
+    if (latest > own) {
+      state.updateBuild = latest;
+      el.updateText.textContent = `Neue Version verfügbar (Build ${latest}, du hast Build ${own}).`;
+      el.updateLink.href = APK_URL;
+      el.updateCard.hidden = false;
+      el.menuUpdate.hidden = false;
+      el.menuUpdate.href = APK_URL;
     }
   }
 
@@ -596,6 +735,70 @@
       el.notifyCard.hidden = true;
       try { localStorage.setItem(NOTIFY_DISMISS_KEY, "1"); } catch {}
     });
+    el.geoAllow.addEventListener("click", () => {
+      state.geoAsked = true;
+      el.geoCard.hidden = true;
+      if (nativeBridge && typeof nativeBridge.setSharing === "function") {
+        // Android fragt die Berechtigung ab und meldet die Antwort ueber window.fmsPermission.
+        let granted = false;
+        try { granted = nativeBridge.locationPermission && nativeBridge.locationPermission() === "granted"; } catch {}
+        if (granted) startWatch();
+        else nativeSetSharing(true);
+        return;
+      }
+      startWatch();
+    });
+    el.geoSettings.addEventListener("click", () => {
+      try { nativeBridge.openSettings(); } catch {}
+    });
+    el.shareSend.addEventListener("click", () => {
+      el.shareSheet.hidden = true;
+      sendInvite();
+    });
+    el.shareClose.addEventListener("click", () => {
+      el.shareSheet.hidden = true;
+    });
+    el.shareSheet.addEventListener("click", event => {
+      if (event.target === el.shareSheet) el.shareSheet.hidden = true;
+    });
+    el.updateLater.addEventListener("click", () => {
+      el.updateCard.hidden = true;
+    });
+    el.iosCopy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(formatCode(state.session?.code || ""));
+        toast("Code kopiert.");
+      } catch {
+        toast("Kopieren nicht möglich. Schreib dir den Code auf.");
+      }
+    });
+    el.iosLater.addEventListener("click", () => {
+      el.iosCard.hidden = true;
+      try { localStorage.setItem(IOS_HINT_KEY, "1"); } catch {}
+    });
+    el.menuTimed.addEventListener("click", async () => {
+      openMenu(false);
+      if (!state.session) return;
+      const value = await dialog({
+        title: "Standort nur eine Weile teilen",
+        text: "Uhrzeit (z. B. 20:00) oder Stunden (z. B. 2). Danach schaltet die App das Teilen von selbst aus.",
+        input: true,
+        value: "",
+        placeholder: "20:00 oder 2",
+        ok: "Übernehmen"
+      });
+      if (value === null) return;
+      const until = parseUntil(value);
+      if (!until) {
+        toast("Bitte eine Uhrzeit wie 20:00 oder eine Stundenzahl eingeben.");
+        return;
+      }
+      state.session.sharingUntil = until;
+      saveSession();
+      if (!state.sharing) setSharing(true);
+      applySharingUi();
+      toast(`Standort wird bis ${formatClock(until)} geteilt.`);
+    });
 
     el.centerButton.addEventListener("click", () => {
       if (state.map && state.position) state.map.setView([state.position.lat, state.position.lng], Math.max(state.map.getZoom(), 16));
@@ -617,6 +820,7 @@
       if (!state.session) return;
       if (document.visibilityState === "visible") {
         startPolling();
+        checkSharingTimer();
         ensureConnected(0);
         if (audio.ctx && audio.ctx.state !== "running") audio.ctx.resume().catch(() => {});
         uploadLocation(true);
@@ -639,11 +843,15 @@
     rebuildGroup();
     render();
     initMap();
-    startGeolocation();
+    if (state.sharing) startGeolocation();
+    else {
+      startHeartbeat();
+      nativeSetSharing(false);
+    }
     startPolling();
     watchBattery();
-    nativeSetSharing(state.sharing);
     showNotifyCardIfUseful();
+    showIosHintIfUseful();
     if (net.client) uploadLocation(true);
     else ensureConnected(0);
   }
@@ -654,6 +862,17 @@
   }
 
   /** Im Browser: einmal freundlich nach Benachrichtigungen fragen (aus einer Geste heraus, nicht mitten im Alarm). */
+  /** iPhone ohne Installation: Nach "Zum Home-Bildschirm" ist die Sitzung weg, der Code muss neu eingegeben werden. */
+  function showIosHintIfUseful() {
+    const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    if (!isIos || standalone || isNativeApp) return;
+    let dismissed = false;
+    try { dismissed = localStorage.getItem(IOS_HINT_KEY) === "1"; } catch {}
+    if (dismissed) return;
+    el.iosCardCode.textContent = formatCode(state.session.code);
+    el.iosCard.hidden = false;
+  }
+
   function showNotifyCardIfUseful() {
     if (nativeBridge || !("Notification" in window) || Notification.permission !== "default") return;
     let dismissed = false;
@@ -697,7 +916,33 @@
 
   function applySharingUi() {
     el.shareToggle.classList.toggle("is-on", state.sharing);
-    el.shareToggle.querySelector(".toggle-state").textContent = state.sharing ? "AN" : "AUS";
+    const until = state.session?.sharingUntil;
+    el.shareToggle.querySelector(".toggle-state").textContent = state.sharing ? (until ? `bis ${formatClock(until)}` : "AN") : "AUS";
+  }
+
+  /** "20:00" oder "2" (Stunden) -> Zeitpunkt, bis zu dem geteilt wird. */
+  function parseUntil(text) {
+    const value = String(text || "").trim().replace(",", ".");
+    const clock = value.match(/^(\d{1,2})[:.](\d{2})$/);
+    if (clock && Number(clock[1]) < 24 && Number(clock[2]) < 60) {
+      const date = new Date();
+      date.setHours(Number(clock[1]), Number(clock[2]), 0, 0);
+      if (date.getTime() <= Date.now()) date.setDate(date.getDate() + 1);
+      return date.getTime();
+    }
+    const hours = Number(value.replace(/\s*(h|std\.?|stunden?)$/i, ""));
+    if (Number.isFinite(hours) && hours > 0 && hours <= 48) return Date.now() + hours * 3600000;
+    return null;
+  }
+
+  function checkSharingTimer() {
+    const until = state.session?.sharingUntil;
+    if (!until) return;
+    if (state.sharing && Date.now() >= until) {
+      state.session.sharingUntil = null;
+      setSharing(false);
+      toast("Zeit abgelaufen: Dein Standort wird nicht mehr geteilt.");
+    }
   }
 
   /** Baut state.group aus den empfangenen Mitgliedern, den Gruppendaten und dem eigenen Zustand. */
@@ -714,6 +959,26 @@
       meetingPoint: net.meta?.meetingPoint || null,
       members: [buildMe(), ...others]
     };
+    checkBatteries(others);
+  }
+
+  /** Einmalige Warnung, wenn ein Handy der Gruppe (oder das eigene) unter 20 % faellt. */
+  function checkBatteries(others) {
+    others.forEach(member => {
+      if (member.battery === null || member.battery === undefined) return;
+      if (member.battery <= LOW_BATTERY && !state.batteryWarned.has(member.id)) {
+        state.batteryWarned.add(member.id);
+        toast(`Akku von ${member.name} ist bei ${member.battery} %.`);
+      } else if (member.battery > LOW_BATTERY + 5) {
+        state.batteryWarned.delete(member.id);
+      }
+    });
+    if (state.battery !== null && state.battery <= LOW_BATTERY && !state.ownBatteryWarned) {
+      state.ownBatteryWarned = true;
+      toast(`Dein Akku ist bei ${state.battery} %. Deine Gruppe sieht das.`);
+    } else if (state.battery !== null && state.battery > LOW_BATTERY + 5) {
+      state.ownBatteryWarned = false;
+    }
   }
 
   /** Der eigene Mitgliedseintrag, so wie er auch an die anderen gesendet wird. */
@@ -733,7 +998,8 @@
       sharing: state.sharing,
       alert: state.alert,
       responding: state.responding,
-      lastSeen: new Date().toISOString()
+      lastSeen: new Date().toISOString(),
+      proto: PROTOCOL_VERSION
     };
   }
 
@@ -881,6 +1147,12 @@
       else if (member.lat !== null && state.position) strong.textContent = formatDistance(distanceMeters(state.position, member));
       else strong.textContent = member.lat !== null ? "?" : "kein Ort";
       distance.appendChild(strong);
+      if (!isMe && member.lat !== null && member.accuracy !== null && member.accuracy !== undefined) {
+        const acc = document.createElement("small");
+        acc.className = "member-accuracy";
+        acc.textContent = member.accuracy > APPROX_ACCURACY_M ? `ungefähr, ±${formatDistance(member.accuracy)}` : `±${Math.round(member.accuracy)} m`;
+        distance.appendChild(acc);
+      }
       if (!isMe && member.lat !== null) {
         const link = document.createElement("a");
         link.href = navigationUrl(member.lat, member.lng);
@@ -916,7 +1188,7 @@
       parts.push(`Ort ${formatAgo(memberTime(member, member.locatedAt))}`);
     }
     if (!isMe) parts.push(isOffline(member) ? `offline seit ${formatClock(memberTime(member, member.lastSeen))}` : `online ${formatAgo(memberTime(member, member.lastSeen))}`);
-    if (member.battery !== null && member.battery !== undefined) parts.push(`Akku ${member.battery}%`);
+    if (member.battery !== null && member.battery !== undefined) parts.push(`Akku ${member.battery}%${member.battery <= LOW_BATTERY ? " (schwach)" : ""}`);
     if (member.speed && member.speed > 0.8) parts.push(`${Math.round(member.speed * 3.6)} km/h`);
     return parts.join(" | ");
   }
@@ -977,12 +1249,19 @@
         marker.setIcon(icon);
       }
       marker.bindPopup(`<strong>${escapeHtml(member.name)}</strong><br>${escapeHtml(memberMeta(member, isMe))}`);
+      renderAccuracy(member, isMe);
+      renderTrail(member);
     });
 
     state.markers.forEach((marker, id) => {
       if (!seen.has(id)) {
         marker.remove();
         state.markers.delete(id);
+        const circle = state.accuracyCircles.get(id);
+        if (circle) { circle.remove(); state.accuracyCircles.delete(id); }
+        const line = state.trailLines.get(id);
+        if (line) { line.remove(); state.trailLines.delete(id); }
+        state.trails.delete(id);
       }
     });
 
@@ -1011,6 +1290,69 @@
       state.firstFit = true;
       fitAll();
     }
+  }
+
+  /** Genauigkeitskreis auch fuer andere: ab 30 m sichtbar, damit "800 m ungenau" nicht wie ein exakter Punkt aussieht. */
+  function renderAccuracy(member, isMe) {
+    if (isMe) return; // der eigene Kreis kommt aus state.position
+    const radius = Math.min(Number(member.accuracy) || 0, 1500);
+    let circle = state.accuracyCircles.get(member.id);
+    if (radius < 30) {
+      if (circle) { circle.remove(); state.accuracyCircles.delete(member.id); }
+      return;
+    }
+    const latLng = [member.lat, member.lng];
+    if (!circle) {
+      circle = L.circle(latLng, { radius, color: member.color, weight: 1, dashArray: "4 4", fillOpacity: .06, interactive: false }).addTo(state.map);
+      state.accuracyCircles.set(member.id, circle);
+    } else {
+      circle.setLatLng(latLng).setRadius(radius).setStyle({ color: member.color });
+    }
+  }
+
+  /** Spur der letzten 30 Minuten je Mitglied. */
+  function renderTrail(member) {
+    const at = memberTime(member, member.locatedAt) || Date.now();
+    let trail = state.trails.get(member.id);
+    if (!trail) {
+      trail = [];
+      state.trails.set(member.id, trail);
+    }
+    const last = trail[trail.length - 1];
+    if (!last || (distanceMeters(last, member) > 10 && at > last.at)) trail.push({ lat: member.lat, lng: member.lng, at });
+    const cutoff = Date.now() - TRAIL_MAX_AGE_MS;
+    while (trail.length && (trail[0].at < cutoff || trail.length > TRAIL_MAX_POINTS)) trail.shift();
+    const points = trail.map(point => [point.lat, point.lng]);
+    let line = state.trailLines.get(member.id);
+    if (points.length < 2) {
+      if (line) { line.remove(); state.trailLines.delete(member.id); }
+      return;
+    }
+    if (!line) {
+      line = L.polyline(points, { color: member.color, weight: 3, opacity: .55, dashArray: "1 6", lineCap: "round", interactive: false }).addTo(state.map);
+      state.trailLines.set(member.id, line);
+    } else {
+      line.setLatLngs(points).setStyle({ color: member.color });
+    }
+  }
+
+  function setupMapControls() {
+    el.zoomIn.addEventListener("click", () => state.map && state.map.zoomIn());
+    el.zoomOut.addEventListener("click", () => state.map && state.map.zoomOut());
+    el.mapStyle.addEventListener("click", () => setMapStyle(document.body.classList.contains("map-light") ? "dark" : "light"));
+    let style = "dark";
+    try { style = localStorage.getItem(MAP_STYLE_KEY) || "dark"; } catch {}
+    setMapStyle(style);
+  }
+
+  /** Helle Karte fuer draussen in der Sonne, dunkle fuer abends. */
+  function setMapStyle(style) {
+    const light = style === "light";
+    document.body.classList.toggle("map-light", light);
+    el.mapStyle.textContent = light ? "\u263E" : "\u2600";
+    el.mapStyle.setAttribute("aria-label", light ? "Dunkle Karte" : "Helle Karte");
+    el.mapStyle.title = light ? "Dunkle Karte" : "Helle Karte";
+    try { localStorage.setItem(MAP_STYLE_KEY, style); } catch {}
   }
 
   function fitAll() {
@@ -1049,41 +1391,115 @@
   }
 
   // ---------- Geolocation ----------
+  /** Standort starten: erst erklaeren, dann fragen. Der Herzschlag laeuft auch ohne Standort (Pause, keine Berechtigung). */
   function startGeolocation() {
+    startHeartbeat();
     if (!("geolocation" in navigator)) {
       setGeoStatus("Dein Gerät unterstützt keine Standortabfrage.", "error");
       return;
     }
     if (state.watchId !== null) return;
+    geoPermissionState().then(permission => {
+      if (state.watchId !== null || !state.session || !state.sharing) return;
+      if (permission === "granted" || state.geoAsked) startWatch();
+      else showGeoCard(permission);
+    });
+  }
+
+  function geoPermissionState() {
+    if (nativeBridge && typeof nativeBridge.locationPermission === "function") {
+      try { return Promise.resolve(nativeBridge.locationPermission() === "granted" ? "granted" : "prompt"); } catch {}
+    }
+    if (!navigator.permissions?.query) return Promise.resolve("prompt");
+    return navigator.permissions.query({ name: "geolocation" }).then(result => result.state).catch(() => "prompt");
+  }
+
+  function showGeoCard(permission) {
+    const denied = permission === "denied";
+    el.geoCardText.textContent = denied
+      ? "Der Standort ist für Find Mein Soon gesperrt. Erlaube ihn in den Einstellungen, sonst sieht dich niemand auf der Karte."
+      : "Damit deine Familie dich auf der Karte sieht, braucht die App deinen Standort. Er geht verschlüsselt nur an deine Gruppe.";
+    el.geoAllow.textContent = denied ? "Erneut versuchen" : "Standort erlauben";
+    el.geoSettings.hidden = !(denied && nativeBridge && typeof nativeBridge.openSettings === "function");
+    el.geoCard.hidden = false;
+    setGeoStatus(denied ? "Standort gesperrt." : "Standort noch nicht erlaubt.", denied ? "error" : "");
+  }
+
+  function startWatch(highAccuracy = !state.lowPower) {
+    if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
+    el.geoCard.hidden = true;
     setGeoStatus("Standort wird gesucht ...");
     state.watchId = navigator.geolocation.watchPosition(onPosition, onPositionError, {
-      enableHighAccuracy: true,
-      maximumAge: 5000,
+      enableHighAccuracy: highAccuracy,
+      maximumAge: highAccuracy ? 5000 : 30000,
       timeout: 20000
     });
+    nativeSetSharing(state.sharing);
+  }
+
+  function stopWatch() {
+    if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
+    state.watchId = null;
+  }
+
+  function startHeartbeat() {
     clearInterval(state.heartbeatTimer);
-    state.heartbeatTimer = setInterval(() => uploadLocation(true), HEARTBEAT_MS);
+    state.heartbeatTimer = setInterval(() => {
+      checkSharingTimer();
+      checkStillness();
+      uploadLocation(true);
+    }, HEARTBEAT_MS);
   }
 
   function stopGeolocation() {
-    if (state.watchId !== null) navigator.geolocation.clearWatch(state.watchId);
-    state.watchId = null;
+    stopWatch();
     clearInterval(state.heartbeatTimer);
     state.heartbeatTimer = null;
   }
 
+  /** Nach 5 Minuten ohne Bewegung reicht der Netz-Standort; bei Bewegung geht es zurueck auf GPS. */
+  function checkStillness() {
+    if (!state.sharing || state.watchId === null || !state.position || state.lowPower) return;
+    if (Date.now() - state.lastMoveAt > STILL_MS) {
+      state.lowPower = true;
+      startWatch(false);
+      nativeSetLowPower(true);
+    }
+  }
+
+  function nativeSetLowPower(on) {
+    if (!nativeBridge || typeof nativeBridge.setLowPower !== "function") return;
+    try { nativeBridge.setLowPower(Boolean(on)); } catch {}
+  }
+
   function onPosition(position) {
     const coords = position.coords;
+    const now = Date.now();
     state.position = {
       lat: coords.latitude,
       lng: coords.longitude,
       accuracy: coords.accuracy,
       heading: Number.isFinite(coords.heading) ? coords.heading : null,
       speed: Number.isFinite(coords.speed) ? coords.speed : null,
-      at: Date.now()
+      at: now
     };
-    setGeoStatus(`Standort aktiv (±${Math.round(coords.accuracy)} m)`, "ok");
+    const moveThreshold = Math.max(30, Number(coords.accuracy) || 0);
+    if (!state.lastMovePos || distanceMeters(state.position, state.lastMovePos) > moveThreshold) {
+      state.lastMovePos = { lat: coords.latitude, lng: coords.longitude };
+      state.lastMoveAt = now;
+      if (state.lowPower) {
+        state.lowPower = false;
+        startWatch(true);
+        nativeSetLowPower(false);
+      }
+    }
+    if (coords.accuracy > 1000) {
+      setGeoStatus(`Nur ungefährer Standort (±${formatDistance(coords.accuracy)}). Erlaube in den Einstellungen den genauen Standort.`, "warn");
+    } else {
+      setGeoStatus(`Standort aktiv (±${Math.round(coords.accuracy)} m${state.lowPower ? ", Stromsparmodus" : ""})`, "ok");
+    }
     if (state.group) {
+      rebuildGroup(); // eigener Eintrag (Marker, Spur, Entfernungen) sofort aktuell, auch wenn das Senden gedrosselt ist
       renderMarkers();
       renderMembers();
       renderMeeting();
@@ -1098,6 +1514,10 @@
       3: "Standortsuche dauert zu lange ..."
     };
     setGeoStatus(messages[error.code] || "Standortfehler.", "error");
+    if (error.code === 1) {
+      stopWatch();
+      showGeoCard("denied");
+    }
   }
 
   function setGeoStatus(text, kind) {
@@ -1109,7 +1529,9 @@
     if (!state.session) return;
     const now = Date.now();
     const moved = state.position && state.lastUploadPos ? distanceMeters(state.position, state.lastUploadPos) : Infinity;
-    if (!force && (now - state.lastUpload < MIN_UPLOAD_GAP_MS || moved < 15)) return;
+    // Der erste Standort nach dem Beitritt geht sofort raus, danach gilt die Drossel.
+    const firstFix = Boolean(state.sharing && state.position && !state.lastUploadPos);
+    if (!force && !firstFix && (now - state.lastUpload < MIN_UPLOAD_GAP_MS || moved < 15)) return;
     state.lastUpload = now;
     if (state.sharing && state.position) state.lastUploadPos = { lat: state.position.lat, lng: state.position.lng };
     rebuildGroup();
@@ -1132,9 +1554,16 @@
       state.session.sharing = state.sharing;
       saveSession();
     }
+    if (!state.sharing && state.session) state.session.sharingUntil = null;
     applySharingUi();
-    if (state.sharing) startGeolocation();
-    nativeSetSharing(state.sharing);
+    if (state.sharing) {
+      startGeolocation();
+    } else {
+      // Pause: GPS aus, nur der Herzschlag laeuft weiter (Akku).
+      stopWatch();
+      state.lowPower = false;
+      nativeSetSharing(false);
+    }
     uploadLocation(true);
   }
 
@@ -1143,6 +1572,7 @@
     navigator.getBattery().then(battery => {
       const update = () => {
         state.battery = Math.round(battery.level * 100);
+        if (state.group) rebuildGroup();
       };
       update();
       battery.addEventListener("levelchange", update);
@@ -1298,11 +1728,36 @@
   }
 
   // ---------- Share / Navigation ----------
-  async function shareCode() {
-    if (!state.group) return;
+  function inviteUrl() {
     const base = isNativeApp || !/^https?:$/.test(location.protocol) ? PUBLIC_APP_URL : `${location.origin}${location.pathname}`;
+    return `${base}#join=${formatCode(state.group.code)}`;
+  }
+
+  /** "Code teilen": Code gross, QR-Code zum Abfotografieren, dann Teilen/Kopieren. */
+  function shareCode() {
+    if (!state.group) return;
+    el.shareSheetCode.textContent = formatCode(state.group.code);
+    el.shareQr.innerHTML = "";
+    try {
+      if (typeof qrcode === "function") {
+        const qr = qrcode(0, "M");
+        qr.addData(inviteUrl());
+        qr.make();
+        el.shareQr.innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+        const svg = el.shareQr.querySelector("svg");
+        if (svg) svg.setAttribute("aria-label", "QR-Code mit Einladungslink");
+      }
+    } catch {
+      el.shareQr.innerHTML = "";
+    }
+    el.shareSend.textContent = (nativeBridge && typeof nativeBridge.share === "function") || navigator.share ? "Link teilen" : "Link kopieren";
+    el.shareSheet.hidden = false;
+  }
+
+  async function sendInvite() {
+    if (!state.group) return;
     const shown = formatCode(state.group.code);
-    const url = `${base}#join=${shown}`;
+    const url = inviteUrl();
     const text = `Komm in meine Find-Mein-Soon-Gruppe "${state.group.name}". Code: ${shown}`;
     const hint = "Wer den Code hat, sieht euch, bis ihr im Menü einen neuen erzeugt.";
     if (nativeBridge && typeof nativeBridge.share === "function") {
@@ -1398,7 +1853,18 @@
       state.accuracyCircle.remove();
       state.accuracyCircle = null;
     }
+    state.accuracyCircles.forEach(circle => circle.remove());
+    state.accuracyCircles.clear();
+    state.trailLines.forEach(line => line.remove());
+    state.trailLines.clear();
+    state.trails.clear();
+    state.batteryWarned.clear();
+    state.lowPower = false;
+    state.geoAsked = false;
     el.alertBanner.hidden = true;
+    el.geoCard.hidden = true;
+    el.iosCard.hidden = true;
+    el.shareSheet.hidden = true;
     net.secretsCache.clear();
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }
@@ -1767,6 +2233,10 @@
       return; // fremde, beschaedigte oder auf ein anderes Thema kopierte Nachricht
     }
     if (!data || typeof data !== "object") return;
+    if (Number(data.proto) > PROTOCOL_VERSION && !state.protoHintShown) {
+      state.protoHintShown = true;
+      toast("Jemand in der Gruppe nutzt eine neuere App-Version. Bitte aktualisiere Find Mein Soon.");
+    }
 
     if (sub === "meta") {
       // Der Broker liefert Nachrichten in der Reihenfolge, in der er sie angenommen hat: die letzte gilt.
@@ -1845,7 +2315,8 @@
       name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
       meetingPoint: net.meta?.meetingPoint || null,
       ...changes,
-      ts: Date.now()
+      ts: Date.now(),
+      proto: PROTOCOL_VERSION
     };
     net.meta = meta;
     rebuildGroup();

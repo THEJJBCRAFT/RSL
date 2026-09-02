@@ -27,8 +27,8 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <span class="net-dot" id="netDot" title="Verbindung"></span>
-        <button type="button" class="icon-button" id="menuButton" aria-label="Menü">&#9776;</button>
+        <span class="net-dot" id="netDot" title="Verbindung" aria-hidden="true"></span>
+        <button type="button" class="icon-button" id="menuButton" aria-label="Menü" aria-haspopup="dialog">&#9776;</button>
       </div>
     </header>
 
@@ -60,7 +60,12 @@
           <input type="text" id="setupCode" maxlength="160" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" class="code-input">
         </label>
 
-        <p class="form-error" id="setupError" hidden></p>
+        <div class="hint-card inline-card" id="openInAppCard" hidden>
+          <strong>Find Mein Soon ist installiert?</strong>
+          <p>Dann öffne die Einladung direkt in der App, damit du nicht doppelt in der Gruppe bist.</p>
+          <a class="ghost-button link-button" id="openInAppLink" href="#">In der Find-Mein-Soon-App öffnen</a>
+        </div>
+        <p class="form-error" id="setupError" hidden role="alert"></p>
         <button type="submit" class="primary-button" id="setupSubmit">Gruppe erstellen</button>
         <button type="button" class="ghost-button" id="setupForce" hidden>Trotzdem beitreten</button>
       </form>
@@ -82,14 +87,14 @@
         <ol>
           <li>Gruppe erstellen und Code direkt an alle schicken. Wer den Code hat, sieht die Gruppe.</li>
           <li>Jeder tippt seinen Namen und den Code ein. Kein Konto, kein Server.</li>
-          <li>Standort freigeben. Alle sehen sich verschlüsselt auf der Karte.</li>
+          <li>Standort freigeben. Alle sehen sich verschlüsselt auf der Karte, auf Wunsch nur bis zu einer Uhrzeit.</li>
           <li>Verloren? "Finde mich!" drücken. Alle bekommen Alarm, in der Android-App auch im Hintergrund.</li>
         </ol>
       </div>
     </section>
 
     <section class="view main-view" id="mainView" hidden>
-      <div class="alert-banner" id="alertBanner" hidden>
+      <div class="alert-banner" id="alertBanner" hidden role="alert" aria-live="assertive">
         <div>
           <strong id="alertTitle">Jemand braucht Hilfe</strong>
           <span id="alertText"></span>
@@ -107,14 +112,17 @@
           <p>Karte konnte nicht geladen werden. Die Liste unten funktioniert trotzdem.</p>
         </div>
         <div class="map-controls">
-          <button type="button" class="map-button" id="centerButton" title="Auf mich zentrieren">&#9673;</button>
-          <button type="button" class="map-button" id="fitButton" title="Alle anzeigen">&#9635;</button>
+          <button type="button" class="map-button" id="centerButton" title="Auf mich zentrieren" aria-label="Auf mich zentrieren">&#9673;</button>
+          <button type="button" class="map-button" id="fitButton" title="Alle anzeigen" aria-label="Alle anzeigen">&#9635;</button>
+          <button type="button" class="map-button" id="zoomIn" title="Vergrößern" aria-label="Karte vergrößern">+</button>
+          <button type="button" class="map-button" id="zoomOut" title="Verkleinern" aria-label="Karte verkleinern">&minus;</button>
+          <button type="button" class="map-button" id="mapStyle" title="Helle Karte" aria-label="Helle Karte">&#9728;</button>
         </div>
         <div class="pick-hint" id="pickHint" hidden>
           Tippe auf die Karte, um den Treffpunkt zu setzen.
           <button type="button" id="pickCancel">Abbrechen</button>
         </div>
-        <div class="geo-status" id="geoStatus">Standort wird gesucht ...</div>
+        <div class="geo-status" id="geoStatus" role="status" aria-live="polite">Standort wird gesucht ...</div>
       </div>
 
       <div class="sheet" id="sheet">
@@ -123,7 +131,7 @@
           <div>
             <strong id="groupName">Gruppe</strong>
             <span>Code: <code id="groupCode">----</code></span>
-            <span class="net-status" id="netStatus"></span>
+            <span class="net-status" id="netStatus" role="status" aria-live="polite"></span>
           </div>
           <button type="button" class="ghost-button small" id="shareButton">Code teilen</button>
         </div>
@@ -160,6 +168,33 @@
           </div>
         </div>
 
+        <div class="notify-card" id="geoCard" hidden>
+          <strong>Standort freigeben</strong>
+          <span id="geoCardText"></span>
+          <div>
+            <button type="button" class="ghost-button small" id="geoAllow">Standort erlauben</button>
+            <button type="button" class="ghost-button small" id="geoSettings" hidden>Einstellungen öffnen</button>
+          </div>
+        </div>
+
+        <div class="notify-card" id="updateCard" hidden>
+          <strong>Update für die App</strong>
+          <span id="updateText"></span>
+          <div>
+            <a class="ghost-button small link-button" id="updateLink" href="#">Herunterladen</a>
+            <button type="button" class="ghost-button small" id="updateLater">Später</button>
+          </div>
+        </div>
+
+        <div class="notify-card" id="iosCard" hidden>
+          <strong>Als App auf dem iPhone</strong>
+          <span>Teilen-Symbol antippen und „Zum Home-Bildschirm“ wählen. Danach musst du den Code einmal neu eingeben: <code id="iosCardCode"></code></span>
+          <div>
+            <button type="button" class="ghost-button small" id="iosCopy">Code kopieren</button>
+            <button type="button" class="ghost-button small" id="iosLater">Später</button>
+          </div>
+        </div>
+
         <div class="notify-card" id="notifyCard" hidden>
           <strong>Alarm auch, wenn die App im Hintergrund ist?</strong>
           <span>Dann bekommst du eine Benachrichtigung, wenn jemand „Finde mich!“ drückt.</span>
@@ -180,11 +215,14 @@
         <button type="button" class="ghost-button" id="menuInstall" hidden>Als App installieren</button>
         <button type="button" class="ghost-button" id="menuReconnect">Neu verbinden</button>
         <button type="button" class="ghost-button" id="menuRename">Namen ändern</button>
+        <button type="button" class="ghost-button" id="menuTimed">Standort nur bis …</button>
+        <a class="ghost-button link-button" id="menuUpdate" href="#" hidden>Neue Version herunterladen</a>
         <button type="button" class="ghost-button" id="menuPrivacy">Datenschutz</button>
         <button type="button" class="ghost-button" id="menuRenew">Neue Gruppe mit neuem Code</button>
         <button type="button" class="ghost-button danger" id="menuLeave">Gruppe verlassen</button>
         <p class="menu-note" id="menuBroker"></p>
         <button type="button" class="ghost-button small" id="menuBrokerReset" hidden>Standard-Verbindungsdienst nutzen</button>
+        <p class="menu-note" id="menuVersion"></p>
         <a class="ghost-button link-button" href="../../index.html">Zur JARO & DELTA Website</a>
         <button type="button" class="primary-button" id="menuClose">Schließen</button>
       </div>
@@ -200,7 +238,21 @@
       </div>
     </div>
 
-    <div class="menu dialog" id="dialog" hidden>
+    <div class="menu" id="shareSheet" hidden role="dialog" aria-labelledby="shareSheetTitle">
+      <div class="menu-panel share-panel">
+        <h2 id="shareSheetTitle">Code teilen</h2>
+        <p>Die anderen tippen den Code ein oder scannen den QR-Code mit der Kamera.</p>
+        <code class="share-code" id="shareSheetCode"></code>
+        <div class="share-qr" id="shareQr"></div>
+        <p>Wer den Code hat, sieht euch, bis ihr im Menü einen neuen erzeugt.</p>
+        <div class="dialog-actions">
+          <button type="button" class="ghost-button" id="shareClose">Schließen</button>
+          <button type="button" class="primary-button" id="shareSend">Link teilen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="menu dialog" id="dialog" hidden role="dialog" aria-labelledby="dialogTitle">
       <div class="menu-panel">
         <h2 id="dialogTitle"></h2>
         <p id="dialogText"></p>
@@ -212,11 +264,12 @@
       </div>
     </div>
 
-    <div class="toast" id="toast" hidden></div>
+    <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/mqtt/mqtt.min.js"></script>
+  <script src="vendor/qrcode/qrcode.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
