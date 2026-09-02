@@ -1,22 +1,46 @@
-// Erzeugt die PNG-Icons fuer Find Mein Soon ohne externe Abhaengigkeiten.
+// Erzeugt die PNG-Icons fuer Find Mein Soon (Web-App und Android-App) ohne externe Abhaengigkeiten.
 // Aufruf: node tools/make-find-mein-soon-icons.js
 const fs = require("fs");
 const path = require("path");
 const zlib = require("zlib");
 
-const outDir = path.join(__dirname, "..", "apps", "find-mein-soon", "icons");
-fs.mkdirSync(outDir, { recursive: true });
+const root = path.join(__dirname, "..");
+const webIconDir = path.join(root, "apps", "find-mein-soon", "icons");
+const androidResDir = path.join(root, "android", "find-mein-soon", "app", "src", "main", "res");
 
-writePng(path.join(outDir, "icon-192.png"), render(192, false));
-writePng(path.join(outDir, "icon-512.png"), render(512, false));
-writePng(path.join(outDir, "icon-maskable-512.png"), render(512, true));
-console.log(`Icons geschrieben nach ${outDir}`);
+// Android-Dichten: Basisgroesse fuer Launcher-Icons ist 48dp, fuer Adaptive-Icon-Ebenen 108dp.
+const densities = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
 
-function render(size, maskable) {
+main();
+
+function main() {
+  fs.mkdirSync(webIconDir, { recursive: true });
+  writePng(path.join(webIconDir, "icon-192.png"), render(192, "app"));
+  writePng(path.join(webIconDir, "icon-512.png"), render(512, "app"));
+  writePng(path.join(webIconDir, "icon-maskable-512.png"), render(512, "maskable"));
+  console.log(`Web-Icons geschrieben nach ${webIconDir}`);
+
+  Object.entries(densities).forEach(([name, factor]) => {
+    const dir = path.join(androidResDir, `mipmap-${name}`);
+    fs.mkdirSync(dir, { recursive: true });
+    writePng(path.join(dir, "ic_launcher.png"), render(Math.round(48 * factor), "app"));
+    writePng(path.join(dir, "ic_launcher_round.png"), render(Math.round(48 * factor), "round"));
+    writePng(path.join(dir, "ic_launcher_foreground.png"), render(Math.round(108 * factor), "foreground"));
+  });
+  console.log(`Android-Icons geschrieben nach ${androidResDir}`);
+}
+
+// mode: "app" (abgerundetes Quadrat), "maskable" (volle Flaeche, Inhalt kleiner),
+// "round" (Kreis), "foreground" (transparente Adaptive-Icon-Ebene, Inhalt im sicheren Bereich).
+function render(size, mode) {
   const pixels = Buffer.alloc(size * size * 4);
   const samples = 3;
-  const radius = maskable ? 0 : size * 0.22;
-  const scale = maskable ? 0.78 : 1;
+  const options = {
+    cornerRadius: mode === "app" ? 0.22 : 0,
+    circle: mode === "round",
+    scale: mode === "maskable" ? 0.78 : mode === "foreground" ? 0.6 : 1,
+    transparentBackground: mode === "foreground"
+  };
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -25,7 +49,7 @@ function render(size, maskable) {
         for (let sx = 0; sx < samples; sx++) {
           const px = (x + (sx + 0.5) / samples) / size;
           const py = (y + (sy + 0.5) / samples) / size;
-          const color = shade(px, py, radius / size, scale);
+          const color = shade(px, py, options);
           r += color[0] * color[3];
           g += color[1] * color[3];
           b += color[2] * color[3];
@@ -46,18 +70,19 @@ function render(size, maskable) {
 }
 
 // Liefert [r, g, b, alpha] fuer eine Position in 0..1 Koordinaten.
-function shade(px, py, cornerRadius, scale) {
-  const inside = cornerRadius > 0 ? roundedRectCoverage(px, py, cornerRadius) : 1;
-  if (inside <= 0) return [0, 0, 0, 0];
+function shade(px, py, options) {
+  let coverage = 1;
+  if (options.circle) coverage = circleCoverage(px, py);
+  else if (options.cornerRadius > 0) coverage = roundedRectCoverage(px, py, options.cornerRadius);
+  if (coverage <= 0) return [0, 0, 0, 0];
 
-  // Hintergrund: dunkler Verlauf von Navy nach Schwarz.
-  const t = Math.min(1, Math.max(0, (px * 0.4 + py * 0.9)));
-  let color = mix([16, 26, 44], [5, 7, 11], t);
+  // Hintergrund: dunkler Verlauf von Navy nach Schwarz (oder transparent fuer die Adaptive-Icon-Ebene).
+  const t = Math.min(1, Math.max(0, px * 0.4 + py * 0.9));
+  const background = mix([16, 26, 44], [5, 7, 11], t);
+  let layer = options.transparentBackground ? [0, 0, 0, 0] : [background[0], background[1], background[2], 1];
 
-  const cx = 0.5;
-  const cy = 0.5;
-  const dx = (px - cx) / scale;
-  const dy = (py - cy) / scale;
+  const dx = (px - 0.5) / options.scale;
+  const dy = (py - 0.5) / options.scale;
   const dist = Math.sqrt(dx * dx + dy * dy);
 
   // Radar-Ringe in Aqua.
@@ -65,7 +90,7 @@ function shade(px, py, cornerRadius, scale) {
     const edge = Math.abs(dist - ring);
     if (edge < 0.012) {
       const strength = (1 - edge / 0.012) * (0.55 - (0.44 - ring) * 0.6);
-      color = mix(color, [79, 244, 207], strength);
+      layer = over(layer, [79, 244, 207], strength);
     }
   }
 
@@ -73,40 +98,39 @@ function shade(px, py, cornerRadius, scale) {
   const angle = Math.atan2(dy, dx);
   if (dist < 0.44 && angle > -1.35 && angle < -0.35) {
     const strength = (1 - dist / 0.44) * 0.22 * (1 - Math.abs(angle + 0.85) / 0.5);
-    color = mix(color, [79, 244, 207], Math.max(0, strength));
+    layer = over(layer, [79, 244, 207], Math.max(0, strength));
   }
 
   // Pin: Kreis oben + Spitze unten.
-  const pinCx = 0;
   const pinCy = -0.06;
   const pinR = 0.17;
-  const pdx = dx - pinCx;
+  const pdx = dx;
   const pdy = dy - pinCy;
   const inCircle = Math.sqrt(pdx * pdx + pdy * pdy) <= pinR;
   const tipY = pinCy + 0.34;
   let inTip = false;
   if (dy > pinCy && dy <= tipY) {
     const progress = (dy - pinCy) / (tipY - pinCy);
-    const halfWidth = pinR * (1 - progress) * 1.0;
-    inTip = Math.abs(pdx) <= halfWidth;
+    inTip = Math.abs(pdx) <= pinR * (1 - progress);
   }
   if (inCircle || inTip) {
     const shadeAmount = Math.min(1, Math.max(0, (pdy + pinR) / (2 * pinR)));
-    color = mix([255, 92, 110], [139, 7, 20], shadeAmount * 0.9);
+    let pin = mix([255, 92, 110], [139, 7, 20], shadeAmount * 0.9);
     // Weisser Kern.
     const coreR = pinR * 0.42;
     const core = Math.sqrt(pdx * pdx + pdy * pdy);
     if (core <= coreR) {
       const soft = core > coreR - 0.01 ? (coreR - core) / 0.01 : 1;
-      color = mix(color, [255, 255, 255], Math.max(0, Math.min(1, soft)));
+      pin = mix(pin, [255, 255, 255], Math.max(0, Math.min(1, soft)));
     }
+    layer = over(layer, pin, 1);
   }
 
   // Weisser Rand um den Pin fuer Kontrast.
   const outline = pinOutline(pdx, pdy, pinR, pinCy, tipY, dy);
-  if (outline > 0) color = mix(color, [255, 255, 255], outline);
+  if (outline > 0) layer = over(layer, [255, 255, 255], outline);
 
-  return [color[0], color[1], color[2], inside];
+  return [layer[0], layer[1], layer[2], layer[3] * coverage];
 }
 
 function pinOutline(pdx, pdy, pinR, pinCy, tipY, dy) {
@@ -134,13 +158,29 @@ function roundedRectCoverage(px, py, r) {
   if (x >= r || y >= r) return 1;
   const dx = r - x;
   const dy = r - y;
-  const d = Math.sqrt(dx * dx + dy * dy);
-  return d <= r ? 1 : 0;
+  return Math.sqrt(dx * dx + dy * dy) <= r ? 1 : 0;
+}
+
+function circleCoverage(px, py) {
+  const dx = px - 0.5;
+  const dy = py - 0.5;
+  return Math.sqrt(dx * dx + dy * dy) <= 0.5 ? 1 : 0;
 }
 
 function mix(a, b, t) {
   const k = Math.min(1, Math.max(0, t));
   return [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+}
+
+// "Source over"-Compositing mit nicht-vormultipliziertem Alpha.
+function over(dst, rgb, srcAlpha) {
+  const sa = Math.min(1, Math.max(0, srcAlpha));
+  if (sa <= 0) return dst;
+  const da = dst[3];
+  const outA = sa + da * (1 - sa);
+  if (outA <= 0) return [0, 0, 0, 0];
+  const blend = index => (rgb[index] * sa + dst[index] * da * (1 - sa)) / outA;
+  return [blend(0), blend(1), blend(2), outA];
 }
 
 function writePng(file, image) {

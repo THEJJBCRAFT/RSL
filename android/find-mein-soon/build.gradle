@@ -1,0 +1,5 @@
+// Android-Huelle fuer die Find Mein Soon Web-App.
+// Bauen: gradle assembleRelease -PappUrl=https://deine-domain/apps/find-mein-soon/
+plugins {
+    id "com.android.application" version "8.9.1" apply false
+}

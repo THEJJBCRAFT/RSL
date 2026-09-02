@@ -5,6 +5,9 @@
   const MIN_UPLOAD_GAP_MS = 6000;
   const STALE_MS = 3 * 60 * 1000;
   const OFFLINE_MS = 15 * 60 * 1000;
+  // Die Android-App (android/find-mein-soon) haengt diesen Marker an den User-Agent.
+  const isNativeApp = /FindMeinSoonApp\//.test(navigator.userAgent);
+  const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
 
   const $ = id => document.getElementById(id);
   const el = {
@@ -22,7 +25,9 @@
     installCard: $("installCard"),
     installHint: $("installHint"),
     installButton: $("installButton"),
+    apkCard: $("apkCard"),
     menuInstall: $("menuInstall"),
+    menuServer: $("menuServer"),
     topbarSub: $("topbarSub"),
     netDot: $("netDot"),
     menuButton: $("menuButton"),
@@ -186,6 +191,12 @@
     el.menuPrivacy.addEventListener("click", () => {
       openMenu(false);
       el.privacy.hidden = false;
+    });
+    el.menuServer.hidden = !isNativeApp;
+    el.menuServer.addEventListener("click", () => {
+      openMenu(false);
+      // Wird von der Android-Huelle abgefangen und oeffnet dort den Dialog fuer die Server-Adresse.
+      location.href = "findmeinsoon://settings";
     });
     el.privacyClose.addEventListener("click", () => {
       el.privacy.hidden = true;
@@ -388,8 +399,10 @@
       if (!isMe && member.lat !== null) {
         const link = document.createElement("a");
         link.href = navigationUrl(member.lat, member.lng);
-        link.target = "_blank";
-        link.rel = "noopener";
+        if (!isNativeApp) {
+          link.target = "_blank";
+          link.rel = "noopener";
+        }
         link.textContent = "Route";
         distance.appendChild(link);
       }
@@ -754,14 +767,16 @@
   }
 
   function navigationUrl(lat, lng) {
-    const isApple = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-    return isApple
+    return isIos
       ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=w`
       : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
   }
 
   function openNavigation(lat, lng) {
-    window.open(navigationUrl(lat, lng), "_blank", "noopener");
+    const url = navigationUrl(lat, lng);
+    // In der Android-Huelle faengt die WebView fremde Adressen ab und oeffnet die Karten-App.
+    if (isNativeApp) location.href = url;
+    else window.open(url, "_blank", "noopener");
   }
 
   // ---------- Session ----------
@@ -832,9 +847,9 @@
   // ---------- Install / PWA ----------
   function setupInstall() {
     const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-    if (standalone) return;
-    const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent) && !window.MSStream;
+    if (standalone || isNativeApp) return;
     el.installCard.hidden = false;
+    el.apkCard.hidden = isIos;
     if (isIos) {
       el.installHint.textContent = "Auf dem iPhone: Teilen-Symbol antippen und \"Zum Home-Bildschirm\" waehlen.";
     }
