@@ -188,7 +188,8 @@ public class MainActivity extends Activity {
                 boolean isWebPage = url != null && (url.startsWith("http://") || url.startsWith("https://"));
                 boolean check = isAppPage(url) || (expectApp && isWebPage);
                 if (isWebPage) expectApp = false;
-                if (check) verifyAppLoaded(view, url, loadGeneration);
+                // Nur pruefen, wenn diese Seite noch die aktuelle ist (kein abgebrochener Ladevorgang).
+                if (check && url.equals(view.getUrl())) verifyAppLoaded(view, url, loadGeneration);
             }
         });
 
