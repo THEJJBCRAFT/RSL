@@ -336,6 +336,7 @@ a {
 
 .map-wrap {
   position: relative;
+  isolation: isolate; /* Leaflet-Ebenen (z-index bis 700) bleiben unter Menue und Dialog */
   flex: 1;
   min-height: 42vh;
   background: var(--bg-2);
@@ -947,4 +948,9 @@ a {
   .dialog .menu-panel {
     border-radius: 20px;
   }
+}
+
+.menu-note {
+  margin: 8px 0 0 !important;
+  font-size: 12px !important;
 }

@@ -57,7 +57,7 @@
 
         <label id="codeField" hidden>
           <span>Gruppencode</span>
-          <input type="text" id="setupCode" maxlength="160" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD2345" class="code-input">
+          <input type="text" id="setupCode" maxlength="160" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" class="code-input">
         </label>
 
         <p class="form-error" id="setupError" hidden></p>
@@ -80,7 +80,7 @@
       <div class="card hint-card">
         <strong>So funktioniert es</strong>
         <ol>
-          <li>Gruppe erstellen und Code an alle schicken.</li>
+          <li>Gruppe erstellen und Code direkt an alle schicken. Wer den Code hat, sieht die Gruppe.</li>
           <li>Jeder tippt seinen Namen und den Code ein. Kein Konto, kein Server.</li>
           <li>Standort freigeben. Alle sehen sich verschlüsselt auf der Karte.</li>
           <li>Verloren? "Finde mich!" drücken. Alle bekommen Alarm, in der Android-App auch im Hintergrund.</li>
@@ -122,7 +122,7 @@
         <div class="group-line">
           <div>
             <strong id="groupName">Gruppe</strong>
-            <span>Code: <code id="groupCode">--------</code></span>
+            <span>Code: <code id="groupCode">----</code></span>
             <span class="net-status" id="netStatus"></span>
           </div>
           <button type="button" class="ghost-button small" id="shareButton">Code teilen</button>
@@ -181,7 +181,10 @@
         <button type="button" class="ghost-button" id="menuReconnect">Neu verbinden</button>
         <button type="button" class="ghost-button" id="menuRename">Namen ändern</button>
         <button type="button" class="ghost-button" id="menuPrivacy">Datenschutz</button>
+        <button type="button" class="ghost-button" id="menuRenew">Neue Gruppe mit neuem Code</button>
         <button type="button" class="ghost-button danger" id="menuLeave">Gruppe verlassen</button>
+        <p class="menu-note" id="menuBroker"></p>
+        <button type="button" class="ghost-button small" id="menuBrokerReset" hidden>Standard-Verbindungsdienst nutzen</button>
         <a class="ghost-button link-button" href="../../index.html">Zur JARO & DELTA Website</a>
         <button type="button" class="primary-button" id="menuClose">Schließen</button>
       </div>
@@ -190,9 +193,9 @@
     <div class="menu" id="privacy" hidden>
       <div class="menu-panel">
         <h2>Datenschutz</h2>
-        <p>Find Mein Soon hat keinen eigenen Server. Die Handys deiner Gruppe tauschen ihre Standorte über einen öffentlichen Nachrichtendienst (MQTT-Broker) aus. Alle Daten werden vorher auf dem Handy mit einem Schlüssel aus dem Gruppencode verschlüsselt. Der Dienst sieht nur unlesbare Daten; entschlüsseln kann nur, wer den Gruppencode kennt. Gib den Code deshalb nur an Leute weiter, die dich sehen dürfen.</p>
-        <p>Karten werden von OpenStreetMap geladen. Dabei erhält OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
-        <p>Beim Nachrichtendienst bleibt nur der letzte Stand jedes Mitglieds gespeichert. Mit "Gruppe verlassen" wird dein Eintrag dort gelöscht. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
+        <p><strong>Der Gruppencode ist der Schlüssel.</strong> Wer ihn hat, kann die Standorte der Gruppe sehen, solange ihr diesen Code nutzt, auch nach dem Verlassen. Gib ihn nur direkt an Leute weiter, die dich sehen dürfen. Ist er in falsche Hände geraten, erzeugt ihr im Menü eine "Neue Gruppe mit neuem Code".</p>
+        <p>Find Mein Soon hat keinen eigenen Server. Die Handys deiner Gruppe tauschen ihre Daten über einen öffentlichen Nachrichtendienst (MQTT-Broker) aus. Alles wird vorher auf dem Handy verschlüsselt (AES-256, Schlüssel aus dem Gruppencode). Der Dienst sieht deine IP-Adresse, eine zufällige Gruppen- und Mitgliedskennung und verschlüsselte Daten, aber weder Namen noch Standorte noch den Code. Bei ihm bleibt nur der letzte Stand jedes Mitglieds gespeichert und verfällt nach einer Woche; mit "Gruppe verlassen" wird dein Eintrag sofort ersetzt.</p>
+        <p>Karten werden von OpenStreetMap geladen. Dabei erhält OpenStreetMap deine IP-Adresse und den Kartenausschnitt. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte. Gruppen mit altem 8-stelligem Code sind schwächer geschützt; erstellt für sie eine neue Gruppe.</p>
         <button type="button" class="primary-button" id="privacyClose">Verstanden</button>
       </div>
     </div>

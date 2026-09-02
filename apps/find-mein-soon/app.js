@@ -11,8 +11,11 @@
     "wss://test.mosquitto.org:8081"
   ];
   const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const CODE_LENGTH = 8;
-  const KEY_ITERATIONS = 100000;
+  const CODE_LENGTH = 12; // neue Gruppen (Protokoll v2): 60 Bit Zufall, angezeigt als XXXX-XXXX-XXXX
+  const LEGACY_CODE_LENGTH = 8; // Gruppen der ersten Version (Protokoll v1)
+  const KEY_ITERATIONS = 100000; // v1
+  const KEY_ITERATIONS_V2 = 250000;
+  const TOMBSTONE_EXPIRY_S = 24 * 60 * 60;
   const MEMBER_MAX_AGE_MS = 48 * 60 * 60 * 1000;
   const MEMBER_EXPIRY_S = 7 * 24 * 60 * 60;
   const META_EXPIRY_S = 60 * 24 * 60 * 60;
@@ -61,6 +64,9 @@
     menuRename: $("menuRename"),
     menuPrivacy: $("menuPrivacy"),
     menuLeave: $("menuLeave"),
+    menuRenew: $("menuRenew"),
+    menuBroker: $("menuBroker"),
+    menuBrokerReset: $("menuBrokerReset"),
     menuClose: $("menuClose"),
     privacy: $("privacy"),
     privacyClose: $("privacyClose"),
@@ -143,6 +149,8 @@
   const net = {
     client: null,
     key: null,
+    protocol: 0,
+    secretsCache: new Map(),
     root: null,
     connected: false,
     connecting: false,
@@ -172,6 +180,8 @@
     connecting: net.connecting,
     broker: net.brokers[net.brokerIndex] || null,
     protocol: net.client?.options?.protocolVersion || null,
+    version: net.protocol,
+    root: net.root,
     members: net.members.size,
     retries: net.retryCount,
     lastAck: net.lastAck
@@ -194,15 +204,13 @@
     const query = new URLSearchParams(location.search);
     const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
     const brokerParam = hash.get("broker") || query.get("broker");
-    if (brokerParam) {
-      try { localStorage.setItem(BROKER_KEY, brokerParam); } catch {}
-    }
     const joinParam = hash.get("join") || query.get("join");
     if (query.toString() || location.hash) history.replaceState(null, "", location.pathname);
     if (joinParam && !state.session) {
       setMode("join");
-      el.setupCode.value = cleanCode(joinParam);
+      el.setupCode.value = formatCode(extractCode(joinParam));
     }
+    if (brokerParam) offerBrokerOverride(brokerParam);
 
     // Hooks fuer die Android-App.
     window.fmsNativePosition = (lat, lng, accuracy, speed, heading, time) => {
@@ -236,6 +244,54 @@
     } else {
       showSetup();
     }
+  }
+
+  /** Nur verschluesselte wss://-Adressen (oder ws:// auf dem eigenen Rechner zum Testen) sind als Verbindungsdienst erlaubt. */
+  function validBrokerUrl(value) {
+    try {
+      const url = new URL(String(value || "").trim());
+      const local = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname);
+      if (url.protocol !== "wss:" && !(url.protocol === "ws:" && local)) return null;
+      if (url.username || url.password) return null;
+      return String(value).trim();
+    } catch {
+      return null;
+    }
+  }
+
+  /** Ein Link mit ?broker=… darf den Verbindungsdienst nur nach Rueckfrage wechseln. */
+  async function offerBrokerOverride(value) {
+    const url = validBrokerUrl(value);
+    if (!url) {
+      toast("Link ignoriert: Als Verbindungsdienst sind nur verschlüsselte wss://-Adressen erlaubt.");
+      return;
+    }
+    let stored = null;
+    try { stored = localStorage.getItem(BROKER_KEY); } catch {}
+    if (stored === url) return;
+    const ok = await dialog({
+      title: "Anderen Verbindungsdienst nutzen?",
+      text: `Dieser Link möchte die App mit ${brokerHost(url)} verbinden statt mit dem Standard-Dienst. Alle in deiner Gruppe müssen denselben Dienst nutzen. Nur bestätigen, wenn der Link von jemandem kommt, dem du vertraust.`,
+      ok: "Verwenden",
+      danger: true
+    });
+    if (!ok) return;
+    try { localStorage.setItem(BROKER_KEY, url); } catch {}
+    toast(`Verbindungsdienst: ${brokerHost(url)}`);
+    renderBrokerInfo();
+    if (state.session) {
+      disconnectNet();
+      ensureConnected(0);
+    }
+  }
+
+  function renderBrokerInfo() {
+    let stored = null;
+    try { stored = localStorage.getItem(BROKER_KEY); } catch {}
+    el.menuBroker.textContent = stored
+      ? `Eigener Verbindungsdienst: ${brokerHost(stored)}`
+      : `Verbindungsdienst: ${brokerHost(BROKERS[0])} (Standard, mit Ersatzdiensten)`;
+    el.menuBrokerReset.hidden = !stored;
   }
 
   // ---------- Dialog (ersetzt prompt/confirm) ----------
@@ -287,7 +343,7 @@
     });
 
     el.setupCode.addEventListener("input", () => {
-      el.setupCode.value = extractCode(el.setupCode.value);
+      el.setupCode.value = formatCode(extractCode(el.setupCode.value));
       el.setupForce.hidden = true;
       state.pendingSession = null;
     });
@@ -316,7 +372,9 @@
           groupName = el.setupGroupName.value.trim().slice(0, 40) || `${memberName}s Gruppe`;
         } else {
           code = extractCode(el.setupCode.value);
-          if (code.length !== CODE_LENGTH) throw new Error(`Der Gruppencode hat ${CODE_LENGTH} Zeichen.`);
+          if (code.length !== CODE_LENGTH && code.length !== LEGACY_CODE_LENGTH) {
+            throw new Error(`Der Gruppencode hat ${CODE_LENGTH} Zeichen (bei älteren Gruppen ${LEGACY_CODE_LENGTH}).`);
+          }
           const wrong = [...code].filter(char => !CODE_ALPHABET.includes(char));
           if (wrong.length) throw new Error(`Der Code enthält nie ${wrong.join(", ")}. Bitte prüfe ihn (z. B. 8 statt B, 5 statt S, 2 statt Z).`);
         }
@@ -344,7 +402,7 @@
   }
 
   /** Schliesst das Erstellen/Beitreten ab, sobald die Verbindung steht. */
-  function completeJoin(session, created) {
+  function completeJoin(session, created, meetingPoint = null) {
     state.pendingSession = null;
     el.setupForce.hidden = true;
     state.session = session;
@@ -352,10 +410,43 @@
     state.alert = null;
     state.sosActive = false;
     saveSession();
-    if (created) publishMeta({ name: session.groupName, meetingPoint: null }).catch(() => {});
+    if (created) publishMeta({ name: session.groupName, meetingPoint }).catch(() => {});
     history.replaceState(null, "", location.pathname);
     enterGroup();
-    if (created) toast(`Gruppe erstellt. Code: ${session.code}`);
+    if (created) toast(`Gruppe erstellt. Code: ${formatCode(session.code)}`);
+  }
+
+  /**
+   * "Neue Gruppe mit neuem Code": verlaesst die Gruppe und erstellt sofort eine neue mit gleichem Namen und
+   * Treffpunkt. Wer den alten Code kannte, ist damit draussen.
+   */
+  async function renewGroup() {
+    const old = state.session;
+    if (!old) return;
+    const groupName = state.group?.name || old.groupName || "";
+    const meetingPoint = state.group?.meetingPoint || null;
+    toast("Neue Gruppe wird erstellt ...");
+    await departGroup();
+    const memberId = randomId(8);
+    const session = { code: newGroupCode(), memberId, name: old.name, color: colorFor(memberId), groupName, sharing: true, alert: null };
+    try {
+      await connectGroup(session);
+    } catch (error) {
+      showSetup();
+      el.setupName.value = old.name;
+      el.setupGroupName.value = groupName;
+      setMode("create");
+      showSetupError(`Die alte Gruppe wurde verlassen, die neue konnte aber nicht erstellt werden: ${error.message || ""}`);
+      return;
+    }
+    completeJoin(session, true, meetingPoint);
+    const share = await dialog({
+      title: "Neuer Code",
+      text: `"${groupName}" hat jetzt den Code ${formatCode(session.code)}. Schick ihn direkt an alle, die dabei bleiben sollen, nicht über die alte Gruppe.`,
+      ok: "Code teilen",
+      cancel: "Später"
+    });
+    if (share) shareCode();
   }
 
   function waitForMeta(maxMs) {
@@ -439,6 +530,28 @@
       const go = await dialog({ title: "Gruppe verlassen?", text: "Dein Eintrag wird bei allen entfernt. Mit dem Code kannst du jederzeit wieder beitreten.", ok: "Verlassen", danger: true });
       if (!go) return;
       await leaveGroup();
+    });
+    el.menuRenew.addEventListener("click", async () => {
+      openMenu(false);
+      if (!state.session) return;
+      const go = await dialog({
+        title: "Neue Gruppe mit neuem Code?",
+        text: "Wer den alten Code hat, kann euch weiter sehen, solange ihr ihn nutzt. Die App verlässt diese Gruppe und erstellt eine neue mit demselben Namen und Treffpunkt, aber mit frischem Code. Schick den neuen Code danach direkt an die Leute, nicht über die alte Gruppe.",
+        ok: "Neuen Code erzeugen",
+        danger: true
+      });
+      if (!go) return;
+      await renewGroup();
+    });
+    el.menuBrokerReset.addEventListener("click", () => {
+      try { localStorage.removeItem(BROKER_KEY); } catch {}
+      renderBrokerInfo();
+      openMenu(false);
+      toast("Standard-Verbindungsdienst wird wieder genutzt.");
+      if (state.session) {
+        disconnectNet();
+        ensureConnected(0);
+      }
     });
 
     el.shareButton.addEventListener("click", shareCode);
@@ -651,8 +764,10 @@
   function render() {
     if (!state.group) return;
     el.groupName.textContent = state.group.name;
-    el.groupCode.textContent = state.group.code;
-    el.menuInfo.textContent = `${state.session.name} in "${state.group.name}" (Code ${state.group.code}). ${state.group.members.length} Mitglied${state.group.members.length === 1 ? "" : "er"}.`;
+    el.groupCode.textContent = formatCode(state.group.code);
+    const legacy = net.protocol === 1 || state.group.code.length === LEGACY_CODE_LENGTH;
+    el.menuInfo.textContent = `${state.session.name} in "${state.group.name}" (Code ${formatCode(state.group.code)}). ${state.group.members.length} Mitglied${state.group.members.length === 1 ? "" : "er"}.`
+      + (legacy ? " Diese Gruppe nutzt noch einen kurzen Code der ersten Version. Für mehr Sicherheit erzeugt ihr über \"Neue Gruppe mit neuem Code\" einen neuen." : "");
 
     el.sosButton.classList.toggle("is-active", state.sosActive);
     el.sosButton.querySelector(".sos-label").textContent = state.sosActive ? "Ich bin sicher" : "Finde mich!";
@@ -1186,11 +1301,14 @@
   async function shareCode() {
     if (!state.group) return;
     const base = isNativeApp || !/^https?:$/.test(location.protocol) ? PUBLIC_APP_URL : `${location.origin}${location.pathname}`;
-    const url = `${base}#join=${state.group.code}`;
-    const text = `Komm in meine Find-Mein-Soon-Gruppe "${state.group.name}". Code: ${state.group.code}`;
+    const shown = formatCode(state.group.code);
+    const url = `${base}#join=${shown}`;
+    const text = `Komm in meine Find-Mein-Soon-Gruppe "${state.group.name}". Code: ${shown}`;
+    const hint = "Wer den Code hat, sieht euch, bis ihr im Menü einen neuen erzeugt.";
     if (nativeBridge && typeof nativeBridge.share === "function") {
       try {
         nativeBridge.share("Find Mein Soon", `${text}\n${url}`);
+        toast(hint);
         return;
       } catch {
       }
@@ -1198,15 +1316,16 @@
     if (navigator.share) {
       try {
         await navigator.share({ title: "Find Mein Soon", text, url });
+        toast(hint);
         return;
       } catch {
       }
     }
     try {
       await navigator.clipboard.writeText(`${text}\n${url}`);
-      toast("Code und Link kopiert.");
+      toast(`Code und Link kopiert. ${hint}`);
     } catch {
-      dialog({ title: "Code zum Kopieren", input: true, value: `${text} ${url}`, ok: "Fertig", cancel: null });
+      dialog({ title: "Code zum Kopieren", text: hint, input: true, value: `${text} ${url}`, ok: "Fertig", cancel: null });
     }
   }
 
@@ -1233,6 +1352,13 @@
   }
 
   async function leaveGroup() {
+    const removed = await departGroup();
+    toast(removed ? "Du hast die Gruppe verlassen." : "Gruppe verlassen. Dein Eintrag beim Dienst verfällt automatisch.");
+    showSetup();
+  }
+
+  /** Meldet sich bei den anderen ab und loescht die Sitzung. Liefert, ob die Abmeldung den Dienst erreicht hat. */
+  async function departGroup() {
     // Erst Timer stoppen, damit kein Herzschlag den Eintrag nach dem Loeschen wieder anlegt.
     state.leaving = true;
     stopGeolocation();
@@ -1244,8 +1370,7 @@
     }
     clearSession();
     state.leaving = false;
-    toast(removed ? "Du hast die Gruppe verlassen." : "Gruppe verlassen. Dein Eintrag beim Dienst verfällt automatisch.");
-    showSetup();
+    return removed;
   }
 
   function clearSession() {
@@ -1274,6 +1399,7 @@
       state.accuracyCircle = null;
     }
     el.alertBanner.hidden = true;
+    net.secretsCache.clear();
     try { localStorage.removeItem(STORAGE_KEY); } catch {}
   }
 
@@ -1282,6 +1408,7 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
       if (!parsed || !parsed.code || !parsed.memberId || !parsed.name) return null;
+      if (parsed.code.length !== CODE_LENGTH && parsed.code.length !== LEGACY_CODE_LENGTH) return null;
       if (!parsed.color) parsed.color = colorFor(parsed.memberId);
       return parsed;
     } catch {
@@ -1379,6 +1506,7 @@
   }
 
   function openMenu(open) {
+    if (open) renderBrokerInfo();
     el.menu.hidden = !open;
   }
 
@@ -1389,9 +1517,7 @@
 
   function brokerList() {
     try {
-      const param = new URLSearchParams(location.search).get("broker");
-      if (param) localStorage.setItem(BROKER_KEY, param);
-      const stored = localStorage.getItem(BROKER_KEY);
+      const stored = validBrokerUrl(localStorage.getItem(BROKER_KEY));
       if (stored) return [stored, ...BROKERS.filter(url => url !== stored)];
     } catch {
     }
@@ -1410,7 +1536,8 @@
     const secrets = await deriveGroupSecrets(session.code);
     if (generation !== net.generation) throw new Error(ABORTED);
     net.key = secrets.key;
-    net.root = `fms/v1/${secrets.topicId}`;
+    net.protocol = secrets.version;
+    net.root = `fms/v${secrets.version}/${secrets.topicId}`;
     net.members = new Map();
     net.meta = null;
     net.brokers = brokerList();
@@ -1603,6 +1730,7 @@
     net.client = null;
     net.connected = false;
     net.key = null;
+    net.protocol = 0;
     net.root = null;
     net.members = new Map();
     net.meta = null;
@@ -1624,8 +1752,9 @@
     const sub = topic.slice(net.root.length + 1);
     if (!/^[a-z0-9]+$/.test(sub)) return;
     if (!payload || !payload.length) {
-      if (sub !== "meta") {
-        net.members.delete(sub);
+      // Leere retained Nachricht. Nur im alten Protokoll heisst das "hat verlassen". In v2 zaehlt allein die
+      // verschluesselte Abschiedsnachricht, sonst koennte jeder, der die Themen-ID sieht, Mitglieder von der Karte nehmen.
+      if (net.protocol === 1 && sub !== "meta" && net.members.delete(sub)) {
         rebuildGroup();
         render();
       }
@@ -1633,9 +1762,9 @@
     }
     let data;
     try {
-      data = await decrypt(payload);
+      data = await decrypt(payload, topic);
     } catch {
-      return; // fremde oder beschaedigte Nachricht
+      return; // fremde, beschaedigte oder auf ein anderes Thema kopierte Nachricht
     }
     if (!data || typeof data !== "object") return;
 
@@ -1649,6 +1778,14 @@
     } else {
       if (sub === state.session?.memberId) return; // eigener Eintrag: der lokale Zustand ist aktueller
       const existing = net.members.get(sub);
+      if (data.left === true) {
+        // Abschiedsnachricht (v2): gilt nur, wenn sie nicht aelter als der bekannte Stand ist.
+        if (!existing || Number(data.ts || 0) < existing.ts) return;
+        net.members.delete(sub);
+        rebuildGroup();
+        render();
+        return;
+      }
       const member = sanitizeMember(sub, data);
       if (existing && member.ts < existing.ts) return;
       // Uhrenversatz nur aus Live-Nachrichten ableiten; retained Nachrichten koennen beliebig alt sein.
@@ -1722,14 +1859,25 @@
 
   async function leaveNet() {
     if (!net.client || !state.session || !net.connected) return false;
-    // Leere retained Nachricht loescht den eigenen Eintrag beim Broker.
-    return new Promise(resolve => net.client.publish(`${net.root}/${state.session.memberId}`, "", { qos: 1, retain: true }, error => resolve(!error)));
+    const topic = `${net.root}/${state.session.memberId}`;
+    if (net.protocol === 1) {
+      // Altes Protokoll: leere retained Nachricht loescht den eigenen Eintrag beim Broker.
+      return new Promise(resolve => net.client.publish(topic, "", { qos: 1, retain: true }, error => resolve(!error)));
+    }
+    // v2: verschluesselte Abschiedsnachricht, die nur mit dem Gruppenschluessel entstehen kann. Sie ersetzt den
+    // eigenen Eintrag beim Broker und verfaellt von selbst.
+    try {
+      await publish(topic, { left: true, ts: Date.now() }, TOMBSTONE_EXPIRY_S);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /** Sendet verschluesselt und retained. Ohne Verbindung wird nichts gepuffert: nach dem Verbinden geht der aktuelle Stand raus. */
   async function publish(topic, data, expirySeconds) {
     if (!net.client || !net.connected) return;
-    const body = await encrypt(data);
+    const body = await encrypt(data, topic);
     const client = net.client;
     const options = { qos: 1, retain: true };
     if (client.options?.protocolVersion === 5 && expirySeconds) options.properties = { messageExpiryInterval: expirySeconds };
@@ -1747,34 +1895,73 @@
   }
 
   // ---------- Verschluesselung ----------
-  async function deriveGroupSecrets(code) {
-    const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
-    const bits = await crypto.subtle.deriveBits(
-      { name: "PBKDF2", salt: new TextEncoder().encode("find-mein-soon-v1"), iterations: KEY_ITERATIONS, hash: "SHA-256" },
-      material,
-      512
-    );
-    const bytes = new Uint8Array(bits);
-    const key = await crypto.subtle.importKey("raw", bytes.slice(0, 32), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
-    const topicId = Array.from(bytes.slice(32, 48), byte => byte.toString(16).padStart(2, "0")).join("");
-    return { key, topicId };
+  // Protokoll v1 (8-stelliger Code): PBKDF2 liefert Schluessel und Themen-ID in einem Rutsch, Nachrichten ohne Kanal-Bindung.
+  // Protokoll v2 (12-stelliger Code): PBKDF2 streckt den Code, HKDF trennt Schluessel und Themen-ID; jede Nachricht ist
+  // ueber AES-GCM an ihr Thema gebunden (kopierte Nachrichten sind auf anderen Themen ungueltig) und Verlassen ist eine
+  // verschluesselte Abschiedsnachricht statt einer beliebig faelschbaren leeren Nachricht.
+  function protocolFor(code) {
+    return code.length === LEGACY_CODE_LENGTH ? 1 : 2;
   }
 
-  async function encrypt(data) {
+  async function deriveGroupSecrets(code) {
+    const cached = net.secretsCache.get(code);
+    if (cached) return cached;
+    const enc = text => new TextEncoder().encode(text);
+    const version = protocolFor(code);
+    const material = await crypto.subtle.importKey("raw", enc(code), "PBKDF2", false, ["deriveBits"]);
+    let secrets;
+    if (version === 1) {
+      const bytes = new Uint8Array(await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: enc("find-mein-soon-v1"), iterations: KEY_ITERATIONS, hash: "SHA-256" },
+        material,
+        512
+      ));
+      const key = await crypto.subtle.importKey("raw", bytes.slice(0, 32), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+      secrets = { version, key, topicId: toHex(bytes.slice(32, 48)) };
+    } else {
+      const prk = await crypto.subtle.deriveBits(
+        { name: "PBKDF2", salt: enc("find-mein-soon-v2"), iterations: KEY_ITERATIONS_V2, hash: "SHA-256" },
+        material,
+        256
+      );
+      const hkdf = await crypto.subtle.importKey("raw", prk, "HKDF", false, ["deriveBits"]);
+      const derive = (info, bits) => crypto.subtle.deriveBits({ name: "HKDF", hash: "SHA-256", salt: enc("find-mein-soon-v2"), info: enc(info) }, hkdf, bits);
+      const key = await crypto.subtle.importKey("raw", await derive("fms-v2/key", 256), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+      secrets = { version, key, topicId: toHex(new Uint8Array(await derive("fms-v2/topic", 128))) };
+    }
+    net.secretsCache.set(code, secrets);
+    return secrets;
+  }
+
+  function aadFor(topic) {
+    return net.protocol >= 2 ? new TextEncoder().encode(String(topic)) : undefined;
+  }
+
+  async function encrypt(data, topic) {
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const plain = new TextEncoder().encode(JSON.stringify(data));
-    const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, net.key, plain));
+    const params = { name: "AES-GCM", iv };
+    const aad = aadFor(topic);
+    if (aad) params.additionalData = aad;
+    const cipher = new Uint8Array(await crypto.subtle.encrypt(params, net.key, plain));
     const out = new Uint8Array(iv.length + cipher.length);
     out.set(iv, 0);
     out.set(cipher, iv.length);
     return out;
   }
 
-  async function decrypt(payload) {
+  async function decrypt(payload, topic) {
     const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
     if (bytes.length < 13) throw new Error("zu kurz");
-    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.slice(0, 12) }, net.key, bytes.slice(12));
+    const params = { name: "AES-GCM", iv: bytes.slice(0, 12) };
+    const aad = aadFor(topic);
+    if (aad) params.additionalData = aad;
+    const plain = await crypto.subtle.decrypt(params, net.key, bytes.slice(12));
     return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  function toHex(bytes) {
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
   }
 
   function newGroupCode() {
@@ -1786,18 +1973,25 @@
     return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, CODE_LENGTH);
   }
 
-  /** Holt den Code auch aus eingefuegtem Einladungstext oder einem Link heraus. */
+  /** Anzeigeform: Vierergruppen mit Bindestrich (ABCD-EFGH-JKLM). */
+  function formatCode(code) {
+    return cleanCode(code).replace(/(.{4})(?=.)/g, "$1-");
+  }
+
+  /** Holt den Code auch aus eingefuegtem Einladungstext oder einem Link heraus (8 oder 12 Zeichen, mit oder ohne Bindestriche). */
   function extractCode(value) {
     const raw = String(value || "");
-    const fromLink = raw.match(new RegExp(`join=([A-Za-z0-9]{${CODE_LENGTH}})`));
+    const fromLink = raw.match(/join=([A-Za-z0-9-]{8,14})/);
     if (fromLink) return cleanCode(fromLink[1]);
     const upper = raw.toUpperCase();
-    const labelled = upper.match(new RegExp(`CODE[:\\s]*([${CODE_ALPHABET}]{${CODE_LENGTH}})`));
-    if (labelled) return labelled[1];
+    const block = `[${CODE_ALPHABET}]{4}`;
+    const codePattern = `${block}-?${block}(?:-?${block})?`;
+    const labelled = upper.match(new RegExp(`CODE[:\\s]*(${codePattern})`));
+    if (labelled) return cleanCode(labelled[1]);
     if (upper.replace(/[^A-Z0-9]/g, "").length > CODE_LENGTH) {
       // Laengerer Text: das letzte passende Wort ist der Code (steht in Einladungen am Ende).
-      const tokens = [...upper.matchAll(new RegExp(`(?:^|[^A-Z0-9])([${CODE_ALPHABET}]{${CODE_LENGTH}})(?=[^A-Z0-9]|$)`, "g"))];
-      if (tokens.length) return tokens[tokens.length - 1][1];
+      const tokens = [...upper.matchAll(new RegExp(`(?:^|[^A-Z0-9])(${codePattern})(?=[^A-Z0-9]|$)`, "g"))];
+      if (tokens.length) return cleanCode(tokens[tokens.length - 1][1]);
     }
     return cleanCode(raw);
   }
