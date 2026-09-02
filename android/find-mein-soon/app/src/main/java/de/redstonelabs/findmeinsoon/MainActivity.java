@@ -168,7 +168,9 @@ public class MainActivity extends Activity {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                if (!mainFrameFailed) hideError();
+                if (mainFrameFailed) return;
+                hideError();
+                if (url != null && url.startsWith(getAppUrl())) verifyAppLoaded(view);
             }
         });
 
@@ -227,6 +229,20 @@ public class MainActivity extends Activity {
         }
         openExternal(uri);
         return true;
+    }
+
+    /**
+     * Prueft nach dem Laden, ob unter der Adresse wirklich Find Mein Soon liegt. Hosting-Dienste antworten bei
+     * falscher Adresse gern mit einer Textseite wie "Not Found" (auch mit Status 200), die sonst als App durchginge.
+     */
+    private void verifyAppLoaded(WebView view) {
+        view.evaluateJavascript(
+                "(function(){return !!(document.getElementById('app') && document.getElementById('setupForm'));})()",
+                value -> {
+                    if (mainFrameFailed || "true".equals(value)) return;
+                    mainFrameFailed = true;
+                    showError(getString(R.string.error_not_app, getAppUrl()));
+                });
     }
 
     private boolean isAppUrl(Uri uri) {

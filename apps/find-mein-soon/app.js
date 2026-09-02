@@ -914,9 +914,15 @@
       throw error;
     }
     let payload = {};
+    const contentType = response.headers.get("content-type") || "";
     try { payload = await response.json(); } catch {}
     if (!response.ok || payload.ok === false) {
-      const error = new Error(payload.error || `Fehler ${response.status}`);
+      let message = payload.error;
+      if (!message && !contentType.includes("application/json")) {
+        // Statischer Host (z. B. GitHub Pages) ohne laufendes server.js: die API antwortet mit einer HTML-/Textseite.
+        message = "Diese Website hat keinen Find-Mein-Soon-Server. server.js muss online laufen (z. B. auf Render), GitHub Pages allein reicht nicht.";
+      }
+      const error = new Error(message || `Fehler ${response.status}`);
       error.status = response.status;
       throw error;
     }
