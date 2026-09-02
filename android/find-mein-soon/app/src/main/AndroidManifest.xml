@@ -23,8 +23,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme"
-        android:usesCleartextTraffic="true">
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".MainActivity"
@@ -46,8 +45,8 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="${appHost}"
-                    android:pathPrefix="/apps/find-mein-soon"
+                    android:host="${shareHost}"
+                    android:pathPrefix="${sharePath}"
                     android:scheme="https" />
             </intent-filter>
         </activity>

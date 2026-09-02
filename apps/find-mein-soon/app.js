@@ -1,5 +1,20 @@
 (() => {
   const STORAGE_KEY = "findMeinSoon.session";
+  const BROKER_KEY = "findMeinSoon.broker";
+  // Oeffentliche Adresse der Web-App fuer Einladungslinks (die Android-App laedt die Seite aus dem APK).
+  const PUBLIC_APP_URL = "https://thejjbcraft.github.io/RSL/apps/find-mein-soon/";
+  // Oeffentliche, kostenlose MQTT-Broker. Alle Mitglieder nutzen den ersten erreichbaren in dieser Reihenfolge.
+  // Die Daten sind Ende-zu-Ende verschluesselt; der Broker sieht nur Zufallsdaten.
+  const BROKERS = [
+    "wss://broker.hivemq.com:8884/mqtt",
+    "wss://broker.emqx.io:8084/mqtt",
+    "wss://test.mosquitto.org:8081"
+  ];
+  const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const CODE_LENGTH = 8;
+  const KEY_ITERATIONS = 100000;
+  const MEMBER_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+  const MEMBER_COLORS = ["#4ff4cf", "#ff3248", "#ffd166", "#8b5cf6", "#38bdf8", "#fb923c", "#a3e635", "#f472b6"];
   const POLL_MS = 8000;
   const HEARTBEAT_MS = 25000;
   const MIN_UPLOAD_GAP_MS = 6000;
@@ -29,7 +44,6 @@
     installButton: $("installButton"),
     apkCard: $("apkCard"),
     menuInstall: $("menuInstall"),
-    menuServer: $("menuServer"),
     topbarSub: $("topbarSub"),
     netDot: $("netDot"),
     menuButton: $("menuButton"),
@@ -90,12 +104,28 @@
     accuracyCircle: null,
     meetingMarker: null,
     firstFit: false,
-    toastTimer: null
+    toastTimer: null,
+    alert: null
+  };
+
+  // Verbindung zur Gruppe (serverlos ueber einen oeffentlichen MQTT-Broker).
+  const net = {
+    client: null,
+    key: null,
+    root: null,
+    connected: false,
+    members: new Map(),
+    meta: null
   };
 
   init();
 
   function init() {
+    if (isNativeApp) {
+      // Die Seite liegt im APK; der Website-Link muss auf die oeffentliche Adresse zeigen (oeffnet den Browser).
+      const siteLink = document.querySelector("#menu a.link-button");
+      if (siteLink) siteLink.href = new URL("../../", PUBLIC_APP_URL).href;
+    }
     setupInstall();
     setupNetworkIndicator();
     bindSetup();
@@ -105,7 +135,7 @@
     const joinParam = new URLSearchParams(location.search).get("join");
     if (joinParam && !state.session) {
       setMode("join");
-      el.setupCode.value = joinParam.toUpperCase().slice(0, 6);
+      el.setupCode.value = cleanCode(joinParam);
     }
 
     if (state.session) {
@@ -123,7 +153,7 @@
     });
 
     el.setupCode.addEventListener("input", () => {
-      el.setupCode.value = el.setupCode.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+      el.setupCode.value = cleanCode(el.setupCode.value);
     });
 
     el.setupForm.addEventListener("submit", async event => {
@@ -135,30 +165,33 @@
         return;
       }
       el.setupSubmit.disabled = true;
+      el.setupSubmit.textContent = "Verbinde ...";
       try {
-        let response;
+        if (!window.crypto?.subtle) throw new Error("Dieser Browser unterstuetzt die Verschluesselung nicht (HTTPS noetig).");
+        let code;
+        let groupName = "";
         if (state.mode === "create") {
-          response = await api("POST", "/api/finder/groups", { memberName, groupName: el.setupGroupName.value.trim() });
+          code = newGroupCode();
+          groupName = el.setupGroupName.value.trim().slice(0, 40) || `${memberName}s Gruppe`;
         } else {
-          const code = el.setupCode.value.trim();
-          if (code.length !== 6) throw new Error("Der Gruppencode hat 6 Zeichen.");
-          response = await api("POST", "/api/finder/join", { memberName, code });
+          code = cleanCode(el.setupCode.value);
+          if (code.length !== CODE_LENGTH) throw new Error(`Der Gruppencode hat ${CODE_LENGTH} Zeichen.`);
         }
-        state.session = {
-          code: response.group.code,
-          memberId: response.member.id,
-          token: response.member.token,
-          name: memberName
-        };
+        const memberId = randomId(8);
+        const session = { code, memberId, name: memberName.slice(0, 40), color: colorFor(memberId), groupName };
+        await connectGroup(session);
+        state.session = session;
         saveSession();
-        state.group = response.group;
+        if (state.mode === "create") await publishMeta({ name: groupName, meetingPoint: null });
         history.replaceState(null, "", location.pathname);
         enterGroup();
-        if (state.mode === "create") toast(`Gruppe erstellt. Code: ${response.group.code}`);
+        if (state.mode === "create") toast(`Gruppe erstellt. Code: ${code}`);
       } catch (error) {
+        disconnectNet();
         showSetupError(error.message || "Das hat nicht geklappt.");
       } finally {
         el.setupSubmit.disabled = false;
+        setMode(state.mode);
       }
     });
   }
@@ -194,12 +227,6 @@
       openMenu(false);
       el.privacy.hidden = false;
     });
-    el.menuServer.hidden = !isNativeApp;
-    el.menuServer.addEventListener("click", () => {
-      openMenu(false);
-      // Wird von der Android-Huelle abgefangen und oeffnet dort den Dialog fuer die Server-Adresse.
-      location.href = "findmeinsoon://settings";
-    });
     el.privacyClose.addEventListener("click", () => {
       el.privacy.hidden = true;
     });
@@ -220,8 +247,8 @@
     el.shareToggle.addEventListener("click", toggleSharing);
     el.meetingButton.addEventListener("click", startMeetingPick);
     el.pickCancel.addEventListener("click", () => setPicking(false));
-    el.meetingClear.addEventListener("click", async () => {
-      await api("POST", groupPath("meeting"), { clear: true }).then(applyGroup).catch(showError);
+    el.meetingClear.addEventListener("click", () => {
+      publishMeta({ meetingPoint: null }).catch(showError);
     });
     el.meetingNavigate.addEventListener("click", () => {
       const point = state.group?.meetingPoint;
@@ -252,7 +279,8 @@
       if (!state.session) return;
       if (document.visibilityState === "visible") {
         startPolling();
-        refreshGroup();
+        uploadLocation(true);
+        render();
       } else {
         stopPolling();
       }
@@ -263,47 +291,56 @@
     el.setupView.hidden = true;
     el.mainView.hidden = false;
     el.topbarSub.textContent = `Du bist ${state.session.name}`;
+    rebuildGroup();
+    render();
     initMap();
     startGeolocation();
     startPolling();
     watchBattery();
-    refreshGroup();
+    if (!net.client) {
+      connectGroup(state.session)
+        .then(() => uploadLocation(true))
+        .catch(error => toast(error.message || "Keine Verbindung."));
+    } else {
+      uploadLocation(true);
+    }
   }
 
-  function groupPath(action) {
-    return `/api/finder/groups/${state.session.code}${action ? `/${action}` : ""}`;
-  }
-
-  async function refreshGroup() {
+  /** Baut state.group aus den empfangenen Mitgliedern, den Gruppendaten und dem eigenen Zustand. */
+  function rebuildGroup() {
     if (!state.session) return;
-    try {
-      const response = await api("GET", groupPath());
-      applyGroup(response);
-    } catch (error) {
-      if (error.status === 401 || error.status === 404) {
-        toast("Die Gruppe existiert nicht mehr.");
-        clearSession();
-        showSetup();
-      }
-    }
+    const cutoff = Date.now() - MEMBER_MAX_AGE_MS;
+    const others = [...net.members.values()].filter(member => member.id !== state.session.memberId && Date.parse(member.lastSeen || 0) > cutoff);
+    state.group = {
+      code: state.session.code,
+      name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
+      meetingPoint: net.meta?.meetingPoint || null,
+      members: [buildMe(), ...others]
+    };
   }
 
-  function applyGroup(response) {
-    if (!response?.group) return;
-    state.group = response.group;
-    const me = myMember();
-    if (me) {
-      state.sosActive = Boolean(me.alert?.active);
-      if (me.name !== state.session.name) {
-        state.session.name = me.name;
-        saveSession();
-      }
-    }
-    render();
+  /** Der eigene Mitgliedseintrag, so wie er auch an die anderen gesendet wird. */
+  function buildMe() {
+    const position = state.sharing ? state.position : null;
+    return {
+      id: state.session.memberId,
+      name: state.session.name,
+      color: state.session.color,
+      lat: position ? position.lat : null,
+      lng: position ? position.lng : null,
+      accuracy: position ? position.accuracy : null,
+      heading: position ? position.heading : null,
+      speed: position ? position.speed : null,
+      locatedAt: position ? new Date(position.at).toISOString() : null,
+      battery: state.battery,
+      sharing: state.sharing,
+      alert: state.alert,
+      lastSeen: new Date().toISOString()
+    };
   }
 
   function myMember() {
-    return state.group?.members.find(member => member.id === state.session?.memberId) || null;
+    return state.session ? buildMe() : null;
   }
 
   function others() {
@@ -461,7 +498,7 @@
       if (!state.pickingMeeting) return;
       const label = prompt("Name fuer den Treffpunkt:", "Treffpunkt") || "Treffpunkt";
       setPicking(false);
-      api("POST", groupPath("meeting"), { lat: event.latlng.lat, lng: event.latlng.lng, label }).then(applyGroup).catch(showError);
+      setMeetingPoint(event.latlng.lat, event.latlng.lng, label);
     });
   }
 
@@ -549,7 +586,7 @@
   function startMeetingPick() {
     if (!state.map) {
       if (state.position) {
-        api("POST", groupPath("meeting"), { lat: state.position.lat, lng: state.position.lng, label: "Treffpunkt" }).then(applyGroup).catch(showError);
+        setMeetingPoint(state.position.lat, state.position.lng, "Treffpunkt");
       } else {
         toast("Ohne Karte und Standort geht das nicht.");
       }
@@ -627,26 +664,13 @@
     const moved = state.position && state.lastUploadPos ? distanceMeters(state.position, state.lastUploadPos) : Infinity;
     if (!force && now - state.lastUpload < MIN_UPLOAD_GAP_MS && moved < 15) return;
     state.lastUpload = now;
-    const payload = { sharing: state.sharing, battery: state.battery };
-    if (state.sharing && state.position) {
-      Object.assign(payload, {
-        lat: state.position.lat,
-        lng: state.position.lng,
-        accuracy: state.position.accuracy,
-        heading: state.position.heading,
-        speed: state.position.speed
-      });
-      state.lastUploadPos = { lat: state.position.lat, lng: state.position.lng };
-    }
+    if (state.sharing && state.position) state.lastUploadPos = { lat: state.position.lat, lng: state.position.lng };
+    rebuildGroup();
+    render();
     try {
-      const response = await api("POST", groupPath("location"), payload);
-      applyGroup(response);
-    } catch (error) {
-      if (error.status === 401 || error.status === 404) {
-        clearSession();
-        showSetup();
-        toast("Die Gruppe existiert nicht mehr.");
-      }
+      await publishSelf();
+    } catch {
+      // Ohne Verbindung merkt sich MQTT.js die Nachricht und sendet sie nach dem Reconnect.
     }
   }
 
@@ -673,7 +697,10 @@
   // ---------- Polling ----------
   function startPolling() {
     stopPolling();
-    state.pollTimer = setInterval(refreshGroup, POLL_MS);
+    state.pollTimer = setInterval(() => {
+      rebuildGroup();
+      render();
+    }, POLL_MS);
   }
 
   function stopPolling() {
@@ -695,10 +722,11 @@
         el.shareToggle.querySelector(".toggle-state").textContent = "AN";
         startGeolocation();
       }
-      await uploadLocation(true);
-      const response = await api("POST", groupPath("alert"), { active: activate, message });
+      state.alert = activate
+        ? { active: true, message: message.slice(0, 160), since: state.alert?.active ? state.alert.since : new Date().toISOString() }
+        : null;
       state.sosActive = activate;
-      applyGroup(response);
+      await uploadLocation(true);
       vibrate(activate ? [200, 100, 200] : [80]);
       toast(activate ? "Alarm gesendet. Alle in der Gruppe sehen dich jetzt." : "Alarm beendet.");
     } catch (error) {
@@ -751,7 +779,8 @@
   // ---------- Share / Navigation ----------
   async function shareCode() {
     if (!state.group) return;
-    const url = `${location.origin}${location.pathname}?join=${state.group.code}`;
+    const base = isNativeApp || !/^https?:$/.test(location.protocol) ? PUBLIC_APP_URL : `${location.origin}${location.pathname}`;
+    const url = `${base}?join=${state.group.code}`;
     const text = `Komm in meine Find-Mein-Soon-Gruppe "${state.group.name}". Code: ${state.group.code}`;
     if (navigator.share) {
       try {
@@ -783,26 +812,16 @@
 
   // ---------- Session ----------
   async function rejoinWithName(name) {
-    try {
-      const code = state.session.code;
-      const response = await api("POST", "/api/finder/join", { memberName: name, code });
-      await api("POST", groupPath("leave"), {}).catch(() => {});
-      state.session = { code, memberId: response.member.id, token: response.member.token, name };
-      saveSession();
-      state.markers.forEach(marker => marker.remove());
-      state.markers.clear();
-      el.topbarSub.textContent = `Du bist ${name}`;
-      applyGroup(response);
-      uploadLocation(true);
-      toast(`Du heisst jetzt ${name}.`);
-    } catch (error) {
-      showError(error);
-    }
+    state.session.name = name.slice(0, 40);
+    saveSession();
+    el.topbarSub.textContent = `Du bist ${state.session.name}`;
+    await uploadLocation(true);
+    toast(`Du heisst jetzt ${state.session.name}.`);
   }
 
   async function leaveGroup() {
     try {
-      await api("POST", groupPath("leave"), {});
+      await leaveNet();
     } catch {
     }
     clearSession();
@@ -813,7 +832,9 @@
   function clearSession() {
     stopGeolocation();
     stopPolling();
+    disconnectNet();
     state.session = null;
+    state.alert = null;
     state.group = null;
     state.sosActive = false;
     state.firstFit = false;
@@ -836,7 +857,9 @@
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : null;
-      return parsed && parsed.code && parsed.memberId && parsed.token ? parsed : null;
+      if (!parsed || !parsed.code || !parsed.memberId || !parsed.name) return null;
+      if (!parsed.color) parsed.color = colorFor(parsed.memberId);
+      return parsed;
     } catch {
       return null;
     }
@@ -879,58 +902,290 @@
   }
 
   function registerServiceWorker() {
-    if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+    if (!("serviceWorker" in navigator) || isNativeApp || !/^https?:$/.test(location.protocol)) return;
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
   function setupNetworkIndicator() {
-    const update = () => {
-      el.netDot.classList.toggle("is-online", navigator.onLine);
-      el.netDot.classList.toggle("is-offline", !navigator.onLine);
-    };
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    update();
+    window.addEventListener("online", updateNetDot);
+    window.addEventListener("offline", updateNetDot);
+    updateNetDot();
+  }
+
+  function updateNetDot() {
+    const online = navigator.onLine && (net.client ? net.connected : true);
+    el.netDot.classList.toggle("is-online", online);
+    el.netDot.classList.toggle("is-offline", !online);
+    el.netDot.title = net.client ? (net.connected ? "Verbunden" : "Verbindung wird aufgebaut ...") : (navigator.onLine ? "Online" : "Offline");
   }
 
   function openMenu(open) {
     el.menu.hidden = !open;
   }
 
-  // ---------- API ----------
-  async function api(method, path, body) {
-    const headers = { "Accept": "application/json" };
-    if (body !== undefined) headers["Content-Type"] = "application/json";
-    if (state.session) {
-      headers["X-Finder-Member"] = state.session.memberId;
-      headers["X-Finder-Token"] = state.session.token;
-    }
-    let response;
+  // ---------- Netz: serverlos ueber einen oeffentlichen MQTT-Broker ----------
+  // Aus dem Gruppencode werden ein AES-Schluessel und eine Themen-ID abgeleitet. Jedes Mitglied veroeffentlicht
+  // seinen verschluesselten Zustand als "retained" Nachricht unter <root>/<memberId>; Gruppendaten (Name,
+  // Treffpunkt) liegen unter <root>/meta. Neue Mitglieder bekommen so sofort den letzten Stand aller anderen.
+
+  function brokerList() {
     try {
-      response = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      const param = new URLSearchParams(location.search).get("broker");
+      if (param) localStorage.setItem(BROKER_KEY, param);
+      const stored = localStorage.getItem(BROKER_KEY);
+      if (stored) return [stored];
     } catch {
-      const error = new Error("Keine Verbindung zum Server.");
-      error.status = 0;
-      throw error;
     }
-    let payload = {};
-    const isJson = (response.headers.get("content-type") || "").includes("application/json");
-    try { payload = await response.json(); } catch {}
-    if (!response.ok || payload.ok === false || !isJson) {
-      let message = payload.error;
-      if (!message && !isJson) {
-        if (response.ok || response.status === 404 || response.status === 405) {
-          // Statischer Host (z. B. GitHub Pages) ohne laufendes server.js: die API antwortet mit einer HTML-/Textseite.
-          message = "Diese Website hat keinen Find-Mein-Soon-Server. server.js muss online laufen (z. B. auf Render), GitHub Pages allein reicht nicht.";
-        } else if (response.status >= 500) {
-          message = `Der Server antwortet gerade nicht (Fehler ${response.status}). Versuche es gleich nochmal.`;
-        }
+    return BROKERS;
+  }
+
+  async function connectGroup(session) {
+    if (typeof mqtt === "undefined") throw new Error("Die Netzwerk-Bibliothek konnte nicht geladen werden.");
+    disconnectNet();
+    const secrets = await deriveGroupSecrets(session.code);
+    net.key = secrets.key;
+    net.root = `fms/v1/${secrets.topicId}`;
+    net.members = new Map();
+    net.meta = null;
+
+    let lastError = null;
+    for (const url of brokerList()) {
+      try {
+        net.client = await connectBroker(url, session);
+        net.connected = true;
+        updateNetDot();
+        return;
+      } catch (error) {
+        lastError = error;
       }
-      const error = new Error(message || `Fehler ${response.status}`);
-      error.status = response.status;
-      throw error;
     }
-    return payload;
+    throw new Error(lastError?.message || "Kein Verbindungsdienst erreichbar. Pruefe deine Internetverbindung.");
+  }
+
+  function connectBroker(url, session) {
+    return new Promise((resolve, reject) => {
+      const client = mqtt.connect(url, {
+        clientId: `fms-${session.memberId}-${randomId(4)}`,
+        clean: true,
+        keepalive: 30,
+        connectTimeout: 12000,
+        reconnectPeriod: 3000,
+        protocolVersion: 4
+      });
+      let settled = false;
+      const fail = error => {
+        if (settled) return;
+        settled = true;
+        try { client.end(true); } catch {}
+        reject(new Error(`Verbindung zu ${url} fehlgeschlagen${error?.message ? ` (${error.message})` : ""}.`));
+      };
+      const timer = setTimeout(() => fail(new Error("Zeitueberschreitung")), 15000);
+
+      client.on("connect", () => {
+        net.connected = true;
+        updateNetDot();
+        if (settled) {
+          // Reconnect: bei clean=true muss neu abonniert und der eigene Stand erneut gesendet werden.
+          client.subscribe(`${net.root}/#`, { qos: 1 });
+          publishSelf().catch(() => {});
+          return;
+        }
+        client.subscribe(`${net.root}/#`, { qos: 1 }, error => {
+          clearTimeout(timer);
+          if (error) {
+            fail(error);
+            return;
+          }
+          settled = true;
+          resolve(client);
+        });
+      });
+      client.on("message", (topic, payload) => handleMessage(topic, payload));
+      client.on("error", error => {
+        if (!settled) fail(error);
+      });
+      client.on("close", () => {
+        net.connected = false;
+        updateNetDot();
+      });
+      client.on("offline", () => {
+        net.connected = false;
+        updateNetDot();
+      });
+    });
+  }
+
+  function disconnectNet() {
+    if (net.client) {
+      try { net.client.end(true); } catch {}
+    }
+    net.client = null;
+    net.connected = false;
+    net.key = null;
+    net.root = null;
+    net.members = new Map();
+    net.meta = null;
+    updateNetDot();
+  }
+
+  async function handleMessage(topic, payload) {
+    if (!net.root || !topic.startsWith(`${net.root}/`)) return;
+    const sub = topic.slice(net.root.length + 1);
+    if (!/^[a-z0-9]+$/.test(sub)) return;
+    if (!payload || !payload.length) {
+      if (sub !== "meta") {
+        net.members.delete(sub);
+        rebuildGroup();
+        render();
+      }
+      return;
+    }
+    let data;
+    try {
+      data = await decrypt(payload);
+    } catch {
+      return; // fremde oder beschaedigte Nachricht
+    }
+    if (!data || typeof data !== "object") return;
+
+    if (sub === "meta") {
+      if (!net.meta || Number(data.ts || 0) >= Number(net.meta.ts || 0)) {
+        net.meta = {
+          name: cleanText(data.name, 40) || null,
+          meetingPoint: sanitizeMeeting(data.meetingPoint),
+          ts: Number(data.ts || 0)
+        };
+      }
+    } else {
+      if (sub === state.session?.memberId) return; // eigener Eintrag: der lokale Zustand ist aktueller
+      const existing = net.members.get(sub);
+      if (existing && Number(data.ts || 0) < Number(existing.ts || 0)) return;
+      net.members.set(sub, sanitizeMember(sub, data));
+    }
+    rebuildGroup();
+    render();
+  }
+
+  function sanitizeMember(id, data) {
+    const num = value => (value !== null && value !== "" && Number.isFinite(Number(value)) ? Number(value) : null);
+    const lat = num(data.lat);
+    const lng = num(data.lng);
+    const valid = lat !== null && lng !== null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+    return {
+      id,
+      name: cleanText(data.name, 40) || "Unbekannt",
+      color: /^#[0-9a-f]{6}$/i.test(String(data.color || "")) ? data.color : colorFor(id),
+      lat: valid ? lat : null,
+      lng: valid ? lng : null,
+      accuracy: num(data.accuracy),
+      heading: num(data.heading),
+      speed: num(data.speed),
+      battery: num(data.battery),
+      sharing: data.sharing !== false,
+      alert: data.alert && data.alert.active ? { active: true, message: cleanText(data.alert.message, 160), since: String(data.alert.since || "") } : null,
+      locatedAt: typeof data.locatedAt === "string" ? data.locatedAt : null,
+      lastSeen: typeof data.lastSeen === "string" ? data.lastSeen : new Date().toISOString(),
+      ts: Number(data.ts || 0)
+    };
+  }
+
+  function sanitizeMeeting(point) {
+    if (!point || typeof point !== "object") return null;
+    const lat = Number(point.lat);
+    const lng = Number(point.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng, label: cleanText(point.label, 40) || "Treffpunkt", setBy: cleanText(point.setBy, 40) || "?", setAt: String(point.setAt || "") };
+  }
+
+  function cleanText(value, max) {
+    return String(value ?? "").replace(/[\u0000-\u001f]/g, " ").trim().slice(0, max);
+  }
+
+  async function publishSelf() {
+    if (!net.client || !state.session) return;
+    const me = { ...buildMe(), ts: Date.now() };
+    await publish(`${net.root}/${state.session.memberId}`, me);
+  }
+
+  async function publishMeta(changes) {
+    if (!net.client) throw new Error("Nicht verbunden.");
+    const meta = {
+      name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
+      meetingPoint: net.meta?.meetingPoint || null,
+      ...changes,
+      ts: Date.now()
+    };
+    net.meta = meta;
+    rebuildGroup();
+    render();
+    await publish(`${net.root}/meta`, meta);
+  }
+
+  function setMeetingPoint(lat, lng, label) {
+    publishMeta({ meetingPoint: { lat, lng, label: String(label).slice(0, 40), setBy: state.session.name, setAt: new Date().toISOString() } }).catch(showError);
+  }
+
+  async function leaveNet() {
+    if (!net.client || !state.session) return;
+    // Leere retained Nachricht loescht den eigenen Eintrag beim Broker.
+    await new Promise(resolve => net.client.publish(`${net.root}/${state.session.memberId}`, "", { qos: 1, retain: true }, () => resolve()));
+  }
+
+  async function publish(topic, data) {
+    const body = await encrypt(data);
+    return new Promise((resolve, reject) => {
+      net.client.publish(topic, body, { qos: 1, retain: true }, error => (error ? reject(error) : resolve()));
+    });
+  }
+
+  // ---------- Verschluesselung ----------
+  async function deriveGroupSecrets(code) {
+    const material = await crypto.subtle.importKey("raw", new TextEncoder().encode(code), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", salt: new TextEncoder().encode("find-mein-soon-v1"), iterations: KEY_ITERATIONS, hash: "SHA-256" },
+      material,
+      512
+    );
+    const bytes = new Uint8Array(bits);
+    const key = await crypto.subtle.importKey("raw", bytes.slice(0, 32), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+    const topicId = Array.from(bytes.slice(32, 48), byte => byte.toString(16).padStart(2, "0")).join("");
+    return { key, topicId };
+  }
+
+  async function encrypt(data) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const plain = new TextEncoder().encode(JSON.stringify(data));
+    const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, net.key, plain));
+    const out = new Uint8Array(iv.length + cipher.length);
+    out.set(iv, 0);
+    out.set(cipher, iv.length);
+    return out;
+  }
+
+  async function decrypt(payload) {
+    const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+    if (bytes.length < 13) throw new Error("zu kurz");
+    const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes.slice(0, 12) }, net.key, bytes.slice(12));
+    return JSON.parse(new TextDecoder().decode(plain));
+  }
+
+  function newGroupCode() {
+    const bytes = crypto.getRandomValues(new Uint8Array(CODE_LENGTH));
+    return Array.from(bytes, byte => CODE_ALPHABET[byte % CODE_ALPHABET.length]).join("");
+  }
+
+  function cleanCode(value) {
+    return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, CODE_LENGTH);
+  }
+
+  function randomId(bytes) {
+    return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  function colorFor(id) {
+    let hash = 0;
+    for (const char of String(id)) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    return MEMBER_COLORS[hash % MEMBER_COLORS.length];
   }
 
   function showError(error) {

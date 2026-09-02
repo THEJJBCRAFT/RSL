@@ -34,36 +34,39 @@ CC3 Music:
 
 ## Find Mein Soon (Handy-App)
 
-Find Mein Soon ist eine installierbare Web-App (PWA) zum Finden von Familie und Freunden:
+Find Mein Soon ist eine App zum Finden von Familie und Freunden. Sie laeuft komplett fuer sich: kein Konto, keine Website, kein eigener Server.
 
-- App: `apps/find-mein-soon/index.html`
-- Auf dem Handy oeffnen und "Zum Startbildschirm hinzufuegen" waehlen, dann startet sie wie eine normale App.
-- Funktionen: Gruppe erstellen, Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration und Ton, Standort pausieren.
-- Daten: `data/finder.json` (Gruppen werden nach 30 Tagen ohne Aktivitaet geloescht)
-- API: `/api/finder/groups`, `/api/finder/join`, `/api/finder/groups/<CODE>/...`
+- Web-App (PWA): `apps/find-mein-soon/index.html`, laeuft auch direkt von GitHub Pages
+- Android-App (APK): `android/find-mein-soon/`, enthaelt die Web-App komplett, Download siehe unten
+- Funktionen: Gruppe erstellen, 8-stelligen Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration und Ton, Standort pausieren.
+
+So funktioniert es ohne Server: Aus dem Gruppencode werden auf jedem Handy ein Verschluesselungsschluessel (AES-256, PBKDF2) und eine Themen-ID abgeleitet. Jedes Mitglied schickt seinen verschluesselten Standort als "retained" Nachricht an einen oeffentlichen, kostenlosen MQTT-Broker (`broker.hivemq.com`, Ersatz: `broker.emqx.io`, `test.mosquitto.org`). Der Broker speichert nur den letzten Stand jedes Mitglieds und kann die Daten nicht lesen; entschluesseln kann nur, wer den Gruppencode kennt. Ein eigener Broker laesst sich ueber `?broker=wss://…` an der App-Adresse eintragen (wird gespeichert).
+
+Hinweise:
+
+- Standortfreigabe funktioniert im Browser nur ueber HTTPS oder `localhost`; auf GitHub Pages ist HTTPS aktiv.
+- Die Karte kommt von OpenStreetMap, die App-Oberflaeche wird offline aus dem Cache geladen.
+- Oeffentliche Broker sind fuer private Nutzung gedacht und ohne Garantie. Wenn einer ausfaellt, wechseln alle Mitglieder automatisch zum naechsten aus der Liste.
 - Icons neu erzeugen: `npm run icons:find-mein-soon`
-- Karte: Leaflet 1.9.4 liegt lokal in `apps/find-mein-soon/vendor/leaflet/` (BSD-Lizenz), Kartenkacheln kommen von OpenStreetMap.
-
-Wichtig: Standortfreigabe funktioniert im Browser nur ueber HTTPS oder `localhost`. Auf Render ist HTTPS automatisch aktiv.
+- Leaflet 1.9.4 und MQTT.js 5.15 liegen lokal unter `apps/find-mein-soon/vendor/` (BSD- bzw. MIT-Lizenz).
 
 ### Android-App (APK)
 
-Die Web-App gibt es zusaetzlich als echte Android-App. Sie liegt als Quellcode in `android/find-mein-soon/` und wird von GitHub automatisch gebaut.
+Die APK wird von GitHub automatisch gebaut und enthaelt die Web-App als Assets. Sie laedt nichts von einer Website nach.
 
 - Download der fertigen APK: `https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk`
-- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben.
-- Die App laedt die Web-App von der Website und braucht deshalb Internet. Standort, Vibration und Karten-Links (Google Maps) werden nativ durchgereicht.
+- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben. Beim ersten Start die Standort-Berechtigung erlauben.
 - Standort-Updates laufen weiter, solange die App geoeffnet oder im Hintergrund am Leben ist. Android kann Hintergrund-Apps aber jederzeit einschlafen lassen; zuverlaessig ist das Teilen nur mit geoeffneter App.
 - Einladungslinks (`…/apps/find-mein-soon/?join=CODE`) oeffnen sich in der App, sobald man das ab Android 12 einmalig erlaubt: App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen".
 
 So wird die APK gebaut:
 
-1. Auf GitHub unter `Actions` den Workflow `Find Mein Soon APK` oeffnen und `Run workflow` klicken (oder auf `main` pushen, wenn sich etwas unter `android/find-mein-soon/` aendert).
+1. Auf GitHub unter `Actions` den Workflow `Find Mein Soon APK` oeffnen und `Run workflow` klicken (oder auf `main` pushen, wenn sich etwas unter `android/find-mein-soon/` oder `apps/find-mein-soon/` aendert).
 2. Nach ein bis zwei Minuten liegt die APK unter `Releases` (Tag `find-mein-soon-latest`) und als Artefakt am Workflow-Lauf. Pushes auf andere Branches erzeugen nur das Artefakt.
 
 Einstellungen auf GitHub (Settings -> Secrets and variables -> Actions):
 
-- Variable `FMS_APP_URL`: Adresse der Web-App, z. B. `https://deine-domain.de/apps/find-mein-soon/`. Ohne Variable wird `https://jaro-delta-site.onrender.com/apps/find-mein-soon/` eingebaut. Die Adresse laesst sich auch in der App selbst aendern (Menue -> "Server-Adresse aendern" oder auf dem Fehlerbildschirm).
+- Variable `FMS_APP_URL` (optional): oeffentliche Adresse der Web-App fuer Einladungslinks, Standard `https://thejjbcraft.github.io/RSL/apps/find-mein-soon/`.
 - Optional fuer Updates ohne Deinstallation: ein eigener Signatur-Schluessel. Ohne ihn wird bei jedem Build ein neuer Schluessel erzeugt, und Android verlangt vor einem Update die Deinstallation der alten Version.
 
 Eigenen Signatur-Schluessel einmalig erzeugen und als Secrets hinterlegen (am besten ausserhalb des Repository-Ordners, z. B. im Home-Verzeichnis; JDK 17 oder neuer):
@@ -85,7 +88,7 @@ Lokal bauen (Android SDK und JDK 17 noetig; Gradle kommt ueber den mitgelieferte
 
 ```
 cd android/find-mein-soon
-./gradlew assembleRelease -PappUrl=https://deine-domain.de/apps/find-mein-soon/
+./gradlew assembleRelease
 ```
 
 Unter Windows `gradlew.bat` statt `./gradlew`. In Android Studio laesst sich der Ordner `android/find-mein-soon` direkt als Projekt oeffnen.

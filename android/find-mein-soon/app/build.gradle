@@ -2,12 +2,17 @@ plugins {
     id "com.android.application"
 }
 
-// Alle Werte lassen sich beim Bauen ueberschreiben, z. B.:
-//   gradle assembleRelease -PappUrl=https://deine-domain/apps/find-mein-soon/ -PversionCode=42
-def appUrl = (findProperty("appUrl") ?: "https://jaro-delta-site.onrender.com/apps/find-mein-soon/").toString().trim()
-def appHost = new URI(appUrl).host ?: "jaro-delta-site.onrender.com"
+// Die Web-App (apps/find-mein-soon) wird als Asset in die APK gepackt; es wird nichts von einer Website geladen.
+// Werte lassen sich beim Bauen ueberschreiben, z. B.:
+//   ./gradlew assembleRelease -PshareUrl=https://deine-domain/apps/find-mein-soon/ -PversionCode=42
+// shareUrl ist nur die oeffentliche Adresse der Web-App fuer Einladungslinks (App-Links), nicht die Datenquelle.
+def shareUrl = (findProperty("shareUrl") ?: "https://thejjbcraft.github.io/RSL/apps/find-mein-soon/").toString().trim()
+def shareUri = new URI(shareUrl)
+def shareHost = shareUri.host ?: "thejjbcraft.github.io"
+def sharePath = (shareUri.path ?: "/").replaceAll("/+\$", "")
+if (sharePath.isEmpty()) sharePath = "/"
 def buildNumber = (findProperty("versionCode") ?: "1").toString().toInteger()
-def buildName = (findProperty("versionName") ?: "1.0.${buildNumber}").toString()
+def buildName = (findProperty("versionName") ?: "2.0.${buildNumber}").toString()
 def keystorePath = findProperty("keystoreFile")?.toString()
 def hasReleaseKeystore = keystorePath && file(keystorePath).exists()
 
@@ -21,8 +26,14 @@ android {
         targetSdk 35
         versionCode buildNumber
         versionName buildName
-        buildConfigField "String", "APP_URL", "\"${appUrl}\""
-        manifestPlaceholders = [appHost: appHost]
+        manifestPlaceholders = [shareHost: shareHost, sharePath: sharePath]
+    }
+
+    sourceSets {
+        main {
+            // Enthaelt den Ordner find-mein-soon -> Assets unter "find-mein-soon/…"
+            assets.srcDirs += ["../../../apps"]
+        }
     }
 
     signingConfigs {

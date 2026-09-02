@@ -1,18 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Find Mein Soon</string>
-    <string name="error_title">Keine Verbindung</string>
-    <string name="error_network">Die App konnte nicht geladen werden (%1$s). Pruefe deine Internetverbindung oder die Server-Adresse.</string>
-    <string name="error_http">Der Server hat mit Fehler %1$d geantwortet. Pruefe die Server-Adresse.</string>
-    <string name="error_not_app">Unter %1$s wurde Find Mein Soon nicht gefunden. Ist die Website schon online? Die Server-Adresse muss auf den Ordner apps/find-mein-soon/ deiner Website zeigen.</string>
-    <string name="retry">Nochmal versuchen</string>
-    <string name="change_url">Server-Adresse aendern</string>
-    <string name="url_dialog_title">Server-Adresse</string>
-    <string name="url_dialog_message">Adresse der Find-Mein-Soon-Website, z. B. https://deine-domain.de/apps/find-mein-soon/</string>
-    <string name="url_dialog_save">Speichern</string>
-    <string name="url_dialog_reset">Standard</string>
-    <string name="url_dialog_cancel">Abbrechen</string>
-    <string name="url_invalid">Das ist keine gueltige Adresse.</string>
     <string name="location_denied">Ohne Standort-Berechtigung kann dich niemand finden. Du kannst sie in den Android-Einstellungen erlauben.</string>
     <string name="no_app_for_link">Keine App zum Oeffnen dieses Links gefunden.</string>
 </resources>

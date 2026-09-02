@@ -1,0 +1,231 @@
+{
+  "groups": {
+    "SG37RJ": {
+      "code": "SG37RJ",
+      "name": "Jaros Gruppe",
+      "createdAt": "2026-09-02T17:19:03.981Z",
+      "updatedAt": "2026-09-02T17:19:09.386Z",
+      "meetingPoint": null,
+      "members": {
+        "97829e0a95fd7da1": {
+          "id": "97829e0a95fd7da1",
+          "token": "9426a0fda63e94eb3f46c6d414014fac708295f9a3ff4629",
+          "name": "Jaro",
+          "color": "#4ff4cf",
+          "joinedAt": "2026-09-02T17:19:03.982Z",
+          "lastSeen": "2026-09-02T17:19:04.049Z",
+          "locatedAt": "2026-09-02T17:19:04.049Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": null,
+          "sharing": true,
+          "alert": null
+        },
+        "62503b4665f14108": {
+          "id": "62503b4665f14108",
+          "token": "7a3b435c2e0995b337dde2532a00dd20a0e5a1eb0b227643",
+          "name": "Delta",
+          "color": "#ff3248",
+          "joinedAt": "2026-09-02T17:19:09.340Z",
+          "lastSeen": "2026-09-02T17:19:09.386Z",
+          "locatedAt": "2026-09-02T17:19:09.386Z",
+          "lat": 52.5163,
+          "lng": 13.3777,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        }
+      }
+    },
+    "DVXHNC": {
+      "code": "DVXHNC",
+      "name": "Jaros Gruppe",
+      "createdAt": "2026-09-02T17:37:58.547Z",
+      "updatedAt": "2026-09-02T17:38:03.746Z",
+      "meetingPoint": null,
+      "members": {
+        "8878591f4b764657": {
+          "id": "8878591f4b764657",
+          "token": "4ef695831d5455ec0352451a803ba3d5e4911b512e117165",
+          "name": "Jaro",
+          "color": "#4ff4cf",
+          "joinedAt": "2026-09-02T17:37:58.548Z",
+          "lastSeen": "2026-09-02T17:37:58.599Z",
+          "locatedAt": "2026-09-02T17:37:58.599Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": null,
+          "sharing": true,
+          "alert": null
+        },
+        "3ba18dfbca04606f": {
+          "id": "3ba18dfbca04606f",
+          "token": "85d5febab8c46f8ff7fc1e865c94adf7d03eb776af0eb03c",
+          "name": "Delta",
+          "color": "#ff3248",
+          "joinedAt": "2026-09-02T17:38:03.694Z",
+          "lastSeen": "2026-09-02T17:38:03.746Z",
+          "locatedAt": "2026-09-02T17:38:03.746Z",
+          "lat": 52.5163,
+          "lng": 13.3777,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        }
+      }
+    },
+    "3DQJX7": {
+      "code": "3DQJX7",
+      "name": "Jaros Gruppe",
+      "createdAt": "2026-09-02T18:27:03.507Z",
+      "updatedAt": "2026-09-02T18:27:08.935Z",
+      "meetingPoint": null,
+      "members": {
+        "add3618e5f3c35dd": {
+          "id": "add3618e5f3c35dd",
+          "token": "68a8d40101c3b3b97e6b0f265891f8c58e882a5b8688002d",
+          "name": "Jaro",
+          "color": "#4ff4cf",
+          "joinedAt": "2026-09-02T18:27:03.507Z",
+          "lastSeen": "2026-09-02T18:27:03.582Z",
+          "locatedAt": "2026-09-02T18:27:03.582Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": null,
+          "sharing": true,
+          "alert": null
+        },
+        "d9de383720126420": {
+          "id": "d9de383720126420",
+          "token": "630c907628845027a6368dd2984f84041f716718ddc58e8a",
+          "name": "Delta",
+          "color": "#ff3248",
+          "joinedAt": "2026-09-02T18:27:08.887Z",
+          "lastSeen": "2026-09-02T18:27:08.935Z",
+          "locatedAt": "2026-09-02T18:27:08.935Z",
+          "lat": 52.5163,
+          "lng": 13.3777,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        }
+      }
+    },
+    "8XDBLN": {
+      "code": "8XDBLN",
+      "name": "Familie",
+      "createdAt": "2026-09-02T18:41:11.686Z",
+      "updatedAt": "2026-09-02T18:41:27.561Z",
+      "meetingPoint": {
+        "lat": 52.51778776996722,
+        "lng": 13.377571105957033,
+        "label": "Treffpunkt Alex",
+        "setBy": "Jaro",
+        "setAt": "2026-09-02T18:41:21.820Z"
+      },
+      "members": {
+        "c5086bd3826322f2": {
+          "id": "c5086bd3826322f2",
+          "token": "6f889cb58007bcd314f93f70e2de988587b4417e90cabbf5",
+          "name": "Jaro",
+          "color": "#4ff4cf",
+          "joinedAt": "2026-09-02T18:41:11.686Z",
+          "lastSeen": "2026-09-02T18:41:26.624Z",
+          "locatedAt": "2026-09-02T18:41:26.624Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 15,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        },
+        "71410c33b0d1bc69": {
+          "id": "71410c33b0d1bc69",
+          "token": "c698e3392c84c38db50b9ce4769752fb84cff6f1757e2743",
+          "name": "Desktop",
+          "color": "#ff3248",
+          "joinedAt": "2026-09-02T18:41:27.502Z",
+          "lastSeen": "2026-09-02T18:41:27.561Z",
+          "locatedAt": "2026-09-02T18:41:27.561Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        }
+      }
+    },
+    "F2NAJE": {
+      "code": "F2NAJE",
+      "name": "Familie",
+      "createdAt": "2026-09-02T18:52:33.623Z",
+      "updatedAt": "2026-09-02T18:52:49.118Z",
+      "meetingPoint": {
+        "lat": 52.51778776996722,
+        "lng": 13.377571105957033,
+        "label": "Treffpunkt Alex",
+        "setBy": "Jaro",
+        "setAt": "2026-09-02T18:52:43.459Z"
+      },
+      "members": {
+        "b97d187e7596e7f2": {
+          "id": "b97d187e7596e7f2",
+          "token": "c4dcb8ba1110d93759095a43d53646c11dcb159d28217803",
+          "name": "Jaro",
+          "color": "#4ff4cf",
+          "joinedAt": "2026-09-02T18:52:33.624Z",
+          "lastSeen": "2026-09-02T18:52:47.985Z",
+          "locatedAt": "2026-09-02T18:52:47.985Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 15,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        },
+        "77470373c45eac51": {
+          "id": "77470373c45eac51",
+          "token": "e737888ec867b121b7a03db9c4c7f63f7118e37ea8e34418",
+          "name": "Desktop",
+          "color": "#ff3248",
+          "joinedAt": "2026-09-02T18:52:49.074Z",
+          "lastSeen": "2026-09-02T18:52:49.118Z",
+          "locatedAt": "2026-09-02T18:52:49.118Z",
+          "lat": 52.52,
+          "lng": 13.405,
+          "accuracy": 0,
+          "heading": null,
+          "speed": null,
+          "battery": 100,
+          "sharing": true,
+          "alert": null
+        }
+      }
+    }
+  }
+}

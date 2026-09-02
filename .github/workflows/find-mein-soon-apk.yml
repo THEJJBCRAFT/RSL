@@ -1,15 +1,16 @@
 name: Find Mein Soon APK
 
-# Baut die Android-App (APK) fuer Find Mein Soon.
-# - Bei jedem Push auf main mit Aenderungen am Android-Projekt (die APK laedt die Web-App von der Website,
-#   Aenderungen an apps/find-mein-soon brauchen deshalb keinen neuen Build)
+# Baut die Android-App (APK) fuer Find Mein Soon. Die Web-App (apps/find-mein-soon) wird dabei in die APK gepackt,
+# die App braucht keine Website und keinen eigenen Server.
+# - Bei jedem Push auf main mit Aenderungen am Android-Projekt oder an der Web-App
 # - Manuell ueber "Actions" -> "Find Mein Soon APK" -> "Run workflow"
 #
 # Die fertige APK liegt danach unter "Releases" (Tag find-mein-soon-latest) und als Artefakt am Workflow-Lauf.
 # Auf anderen Branches als main wird nur das Artefakt erzeugt (ausser bei manuellem Start).
 #
 # Einstellungen (optional):
-# - Repository-Variable FMS_APP_URL: Adresse der Web-App, z. B. https://deine-domain.de/apps/find-mein-soon/
+# - Repository-Variable FMS_APP_URL: oeffentliche Adresse der Web-App fuer Einladungslinks,
+#   Standard https://thejjbcraft.github.io/RSL/apps/find-mein-soon/
 # - Secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD:
 #   eigener Signatur-Schluessel, damit Updates ohne Deinstallation moeglich sind (siehe README).
 
@@ -20,13 +21,9 @@ on:
       - "claude/**"
     paths:
       - "android/find-mein-soon/**"
+      - "apps/find-mein-soon/**"
       - ".github/workflows/find-mein-soon-apk.yml"
   workflow_dispatch:
-    inputs:
-      app_url:
-        description: "Adresse der Web-App (leer = Repository-Variable FMS_APP_URL oder Standard)"
-        required: false
-        default: ""
 
 permissions:
   contents: write
@@ -41,7 +38,7 @@ jobs:
     name: APK bauen
     runs-on: ubuntu-latest
     env:
-      APP_URL: ${{ github.event.inputs.app_url || vars.FMS_APP_URL || 'https://jaro-delta-site.onrender.com/apps/find-mein-soon/' }}
+      SHARE_URL: ${{ vars.FMS_APP_URL || 'https://thejjbcraft.github.io/RSL/apps/find-mein-soon/' }}
       KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'findmeinsoon' }}
       KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'findmeinsoon' }}
       # PKCS12-Keystores (Standard von keytool) haben kein eigenes Schluessel-Passwort, darum Fallback auf das Keystore-Passwort.
@@ -86,21 +83,23 @@ jobs:
         working-directory: android/find-mein-soon
         run: |
           set -euo pipefail
-          echo "Web-App-Adresse: $APP_URL"
+          echo "Adresse fuer Einladungslinks: $SHARE_URL"
           ./gradlew assembleRelease --no-daemon --stacktrace \
-            -PappUrl="$APP_URL" \
+            -PshareUrl="$SHARE_URL" \
             -PversionCode="${{ github.run_number }}" \
-            -PversionName="1.0.${{ github.run_number }}" \
+            -PversionName="2.0.${{ github.run_number }}" \
             -PkeystoreFile="$KEYSTORE_FILE" \
             -PkeystorePassword="$KEYSTORE_PASSWORD" \
             -PkeyAlias="$KEY_ALIAS" \
             -PkeyPassword="$KEY_PASSWORD"
 
-      - name: APK einsammeln
+      - name: APK einsammeln und pruefen
         run: |
           set -euo pipefail
           cp android/find-mein-soon/app/build/outputs/apk/release/app-release.apk FindMeinSoon.apk
           ls -la FindMeinSoon.apk
+          # Die Web-App muss in der APK stecken.
+          unzip -l FindMeinSoon.apk | grep -E "assets/find-mein-soon/(index\.html|app\.js|vendor/mqtt/mqtt\.min\.js)" || (echo "Web-App fehlt in der APK" && exit 1)
 
       - name: APK als Artefakt speichern
         uses: actions/upload-artifact@v4
@@ -119,9 +118,9 @@ jobs:
           TITLE="Find Mein Soon APK (Build ${{ github.run_number }})"
           NOTES_FILE="$RUNNER_TEMP/notes.md"
           {
-            echo "Android-App fuer Find Mein Soon, Build ${{ github.run_number }} (Version 1.0.${{ github.run_number }}, Commit ${{ github.sha }})."
+            echo "Android-App fuer Find Mein Soon, Build ${{ github.run_number }} (Version 2.0.${{ github.run_number }}, Commit ${{ github.sha }})."
             echo
-            echo "Web-App-Adresse in dieser APK: $APP_URL"
+            echo "Die App laeuft komplett fuer sich: kein Konto, keine Website, kein eigener Server. Die Handys einer Gruppe tauschen ihre Standorte Ende-zu-Ende verschluesselt ueber oeffentliche MQTT-Broker aus."
             echo
             echo "Installation: APK auf dem Handy herunterladen, oeffnen und die Installation aus unbekannten Quellen erlauben."
             echo

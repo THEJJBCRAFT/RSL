@@ -2,56 +2,68 @@ package de.redstonelabs.findmeinsoon;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Message;
-import android.text.InputType;
-import android.util.TypedValue;
 import android.view.View;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.EditText;
 import android.widget.FrameLayout;
-import android.widget.TextView;
 import android.widget.Toast;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * Native Huelle um die Find Mein Soon Web-App.
  *
- * Die Activity laedt die gehostete Web-App in einer WebView, reicht die Standort-Berechtigung
- * an die Seite durch, oeffnet Karten- und Fremdlinks in externen Apps und bietet einen
- * Fallback-Bildschirm, ueber den sich die Server-Adresse ohne Neubau aendern laesst.
+ * Die Web-App liegt komplett im APK (Assets) und wird unter einer internen https-Adresse ausgeliefert, damit
+ * Verschluesselung (WebCrypto) und Standortabfrage wie auf einer richtigen Website funktionieren. Es wird nichts
+ * von einer Website nachgeladen; die Handys einer Gruppe tauschen ihre Daten verschluesselt ueber einen
+ * oeffentlichen MQTT-Broker aus. Die Activity reicht die Standort-Berechtigung durch und oeffnet Karten- und
+ * Fremdlinks in externen Apps.
  */
 public class MainActivity extends Activity {
 
-    private static final String PREFS = "find_mein_soon";
-    private static final String PREF_APP_URL = "app_url";
-    private static final String SETTINGS_SCHEME = "findmeinsoon";
+    private static final String APP_HOST = "app.findmeinsoon.local";
+    private static final String APP_URL = "https://" + APP_HOST + "/index.html";
+    private static final String ASSET_ROOT = "find-mein-soon/";
     private static final int REQUEST_LOCATION = 1001;
+    private static final Map<String, String> MIME_TYPES = new HashMap<>();
+
+    static {
+        MIME_TYPES.put("html", "text/html");
+        MIME_TYPES.put("css", "text/css");
+        MIME_TYPES.put("js", "text/javascript");
+        MIME_TYPES.put("json", "application/json");
+        MIME_TYPES.put("webmanifest", "application/manifest+json");
+        MIME_TYPES.put("png", "image/png");
+        MIME_TYPES.put("jpg", "image/jpeg");
+        MIME_TYPES.put("jpeg", "image/jpeg");
+        MIME_TYPES.put("svg", "image/svg+xml");
+        MIME_TYPES.put("webp", "image/webp");
+        MIME_TYPES.put("ico", "image/x-icon");
+        MIME_TYPES.put("woff", "font/woff");
+        MIME_TYPES.put("woff2", "font/woff2");
+        MIME_TYPES.put("txt", "text/plain");
+        MIME_TYPES.put("md", "text/markdown");
+    }
 
     private WebView webView;
-    private View errorView;
-    private TextView errorText;
-    private boolean mainFrameFailed;
-    // URL der Navigation, fuer die ein Fehler gemeldet wurde: onReceivedHttpError kommt VOR onPageStarted
-    // derselben Navigation, deshalb darf onPageStarted die Markierung dafuer nicht zuruecksetzen.
-    private String failedUrl;
-    // Zaehlt Navigationen, damit ein spaeter Callback von evaluateJavascript nicht zu einer neueren Seite gehoert.
-    private int loadGeneration;
-    // true, wenn wir selbst die App-Adresse laden: dann wird die naechste geladene Seite auf die App geprueft.
-    private boolean expectApp;
     private String pendingGeoOrigin;
     private GeolocationPermissions.Callback pendingGeoCallback;
 
@@ -59,13 +71,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         webView = findViewById(R.id.webView);
-        errorView = findViewById(R.id.errorView);
-        errorText = findViewById(R.id.errorText);
-        findViewById(R.id.retryButton).setOnClickListener(view -> loadApp(null));
-        findViewById(R.id.changeUrlButton).setOnClickListener(view -> showUrlDialog());
-
         setupWebView();
 
         // Standort-Entscheidungen nicht in der WebView speichern: die Android-Berechtigung
@@ -74,10 +80,6 @@ public class MainActivity extends Activity {
 
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
             loadApp(getIntent());
-        } else {
-            // Wiederhergestellte Seite ebenfalls pruefen, falls der Server auf einen anderen Host umgeleitet hat.
-            String current = webView.getUrl();
-            expectApp = current != null && isAppUrl(Uri.parse(current));
         }
     }
 
@@ -85,10 +87,7 @@ public class MainActivity extends Activity {
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        Uri data = intent.getData();
-        if (data != null && isAppUrl(data)) {
-            startLoad(data.toString());
-        }
+        if (joinCode(intent) != null) loadApp(intent);
     }
 
     @Override
@@ -113,7 +112,7 @@ public class MainActivity extends Activity {
     @SuppressWarnings("deprecation")
     @Override
     public void onBackPressed() {
-        if (errorView.getVisibility() != View.VISIBLE && webView.canGoBack()) {
+        if (webView.canGoBack()) {
             webView.goBack();
             return;
         }
@@ -145,51 +144,24 @@ public class MainActivity extends Activity {
         settings.setSupportMultipleWindows(true);
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setUserAgentString(settings.getUserAgentString() + " FindMeinSoonApp/" + BuildConfig.VERSION_NAME);
         webView.setBackgroundColor(getResources().getColor(R.color.background, getTheme()));
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                Uri uri = request.getUrl();
+                if (uri != null && APP_HOST.equalsIgnoreCase(uri.getHost())) {
+                    return serveAsset(uri.getPath());
+                }
+                return null;
+            }
+
+            @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // Eine vom Nutzer oder Skript ausgeloeste Navigation (kein Server-Redirect) ist nicht mehr unsere
-                // App-Adresse: die naechste fertige Seite darf nicht mehr pauschal auf die App geprueft werden.
-                if (!request.isRedirect()) expectApp = false;
                 return handleNavigation(request.getUrl());
-            }
-
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                loadGeneration++;
-                if (failedUrl == null || !failedUrl.equals(url)) {
-                    mainFrameFailed = false;
-                    failedUrl = null;
-                }
-            }
-
-            @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (request.isForMainFrame()) {
-                    markFailed(request.getUrl().toString(), getString(R.string.error_network, String.valueOf(error.getDescription())));
-                }
-            }
-
-            @Override
-            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
-                if (request.isForMainFrame() && response.getStatusCode() >= 400) {
-                    markFailed(request.getUrl().toString(), getString(R.string.error_http, response.getStatusCode()));
-                }
-            }
-
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                if (mainFrameFailed) return;
-                hideError();
-                boolean isWebPage = url != null && (url.startsWith("http://") || url.startsWith("https://"));
-                boolean check = isAppPage(url) || (expectApp && isWebPage);
-                if (isWebPage) expectApp = false;
-                // Nur pruefen, wenn diese Seite noch die aktuelle ist (kein abgebrochener Ladevorgang).
-                if (check && url.equals(view.getUrl())) verifyAppLoaded(view, url, loadGeneration);
             }
         });
 
@@ -228,74 +200,47 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** Liefert eine Datei der Web-App aus den Assets. */
+    private WebResourceResponse serveAsset(String path) {
+        String file = path == null ? "" : path;
+        while (file.startsWith("/")) file = file.substring(1);
+        if (file.isEmpty() || file.endsWith("/")) file += "index.html";
+        if (file.contains("..")) return notFound();
+
+        String extension = file.contains(".") ? file.substring(file.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT) : "";
+        String mime = MIME_TYPES.get(extension);
+        if (mime == null) mime = "application/octet-stream";
+        try {
+            InputStream stream = getAssets().open(ASSET_ROOT + file);
+            Map<String, String> headers = new HashMap<>();
+            headers.put("Cache-Control", "no-cache");
+            headers.put("Access-Control-Allow-Origin", "*");
+            return new WebResourceResponse(mime, mime.startsWith("text/") || mime.contains("javascript") || mime.contains("json") ? "utf-8" : null, 200, "OK", headers, stream);
+        } catch (IOException error) {
+            return notFound();
+        }
+    }
+
+    private WebResourceResponse notFound() {
+        InputStream body = new ByteArrayInputStream("Nicht gefunden".getBytes(StandardCharsets.UTF_8));
+        return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", Collections.emptyMap(), body);
+    }
+
     /**
-     * Entscheidet, ob eine Navigation in der WebView bleibt (eigene Website) oder extern geoeffnet wird.
+     * Entscheidet, ob eine Navigation in der WebView bleibt (eigene App) oder extern geoeffnet wird.
      * Rueckgabe true bedeutet: die WebView soll die URL NICHT selbst laden.
      */
     private boolean handleNavigation(Uri uri) {
         if (uri == null) return false;
-        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase();
-
-        if (SETTINGS_SCHEME.equals(scheme)) {
-            runOnUiThread(this::showUrlDialog);
-            return true;
-        }
+        String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
         if ("about".equals(scheme) || "javascript".equals(scheme) || "data".equals(scheme) || "blob".equals(scheme)) {
             return false;
         }
-        if (("http".equals(scheme) || "https".equals(scheme)) && isAppUrl(uri)) {
+        if ("https".equals(scheme) && APP_HOST.equalsIgnoreCase(uri.getHost())) {
             return false;
         }
         openExternal(uri);
         return true;
-    }
-
-    private void markFailed(String url, String message) {
-        mainFrameFailed = true;
-        failedUrl = url;
-        showError(message);
-    }
-
-    /**
-     * Prueft nach dem Laden, ob unter der Adresse wirklich Find Mein Soon liegt. Hosting-Dienste antworten bei
-     * falscher Adresse gern mit einer Textseite wie "Not Found" (auch mit Status 200), die sonst als App durchginge.
-     */
-    private void verifyAppLoaded(WebView view, String finishedUrl, int generation) {
-        view.evaluateJavascript(
-                "(function(){return !!(document.getElementById('app') && document.getElementById('setupForm'));})()",
-                value -> {
-                    // null: Seite ist inzwischen weg; andere Generation: es laeuft schon eine neuere Navigation.
-                    if (webView == null || value == null || generation != loadGeneration || mainFrameFailed) return;
-                    if ("true".equals(value)) return;
-                    markFailed(finishedUrl, getString(R.string.error_not_app, getAppUrl()));
-                });
-    }
-
-    /**
-     * Liegt die geladene Seite im App-Ordner? Vergleicht Host (ohne Gross-/Kleinschreibung) und Pfad-Praefix,
-     * ignoriert Schema und Port, weil die WebView nach Weiterleitungen (z. B. http -> https) die endgueltige URL meldet.
-     */
-    private boolean isAppPage(String url) {
-        if (url == null) return false;
-        Uri page = Uri.parse(url);
-        Uri app = Uri.parse(getAppUrl());
-        if (page.getHost() == null || app.getHost() == null || !page.getHost().equalsIgnoreCase(app.getHost())) return false;
-        String appPath = folderPath(app.getPath());
-        String pagePath = page.getPath() == null || page.getPath().isEmpty() ? "/" : page.getPath();
-        return pagePath.startsWith(appPath);
-    }
-
-    private static String folderPath(String path) {
-        String value = path == null || path.isEmpty() ? "/" : path;
-        if (value.endsWith("/index.html")) value = value.substring(0, value.length() - "index.html".length());
-        if (!value.endsWith("/")) value = value + "/";
-        return value;
-    }
-
-    private boolean isAppUrl(Uri uri) {
-        Uri app = Uri.parse(getAppUrl());
-        String host = uri.getHost();
-        return host != null && host.equalsIgnoreCase(app.getHost());
     }
 
     private void openExternal(Uri uri) {
@@ -313,83 +258,22 @@ public class MainActivity extends Activity {
                 || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
 
-    // ---------- Laden / Fehler ----------
+    // ---------- Laden ----------
 
     private void loadApp(Intent intent) {
-        Uri data = intent == null ? null : intent.getData();
-        startLoad(data != null && isAppUrl(data) ? data.toString() : getAppUrl());
-    }
-
-    private void startLoad(String url) {
-        mainFrameFailed = false;
-        failedUrl = null;
-        expectApp = true;
-        hideError();
+        String join = joinCode(intent);
+        String url = join == null ? APP_URL : APP_URL + "?join=" + Uri.encode(join);
+        webView.setVisibility(View.VISIBLE);
         webView.loadUrl(url);
     }
 
-    private void showError(String message) {
-        errorText.setText(message);
-        errorView.setVisibility(View.VISIBLE);
-    }
-
-    private void hideError() {
-        errorView.setVisibility(View.GONE);
-    }
-
-    // ---------- Server-Adresse ----------
-
-    private SharedPreferences prefs() {
-        return getSharedPreferences(PREFS, MODE_PRIVATE);
-    }
-
-    private String getAppUrl() {
-        String stored = prefs().getString(PREF_APP_URL, null);
-        return stored == null || stored.isEmpty() ? BuildConfig.APP_URL : stored;
-    }
-
-    private void showUrlDialog() {
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        input.setText(getAppUrl());
-        input.setSelection(input.getText().length());
-        int padding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 20, getResources().getDisplayMetrics());
-        FrameLayout container = new FrameLayout(this);
-        container.setPadding(padding, padding / 2, padding, 0);
-        container.addView(input);
-
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.url_dialog_title)
-                .setMessage(R.string.url_dialog_message)
-                .setView(container)
-                .setPositiveButton(R.string.url_dialog_save, (dialog, which) -> {
-                    String url = normalizeUrl(input.getText().toString());
-                    if (url == null) {
-                        Toast.makeText(this, R.string.url_invalid, Toast.LENGTH_LONG).show();
-                        return;
-                    }
-                    prefs().edit().putString(PREF_APP_URL, url).apply();
-                    loadApp(null);
-                })
-                .setNeutralButton(R.string.url_dialog_reset, (dialog, which) -> {
-                    prefs().edit().remove(PREF_APP_URL).apply();
-                    loadApp(null);
-                })
-                .setNegativeButton(R.string.url_dialog_cancel, null)
-                .show();
-    }
-
-    private static String normalizeUrl(String raw) {
-        String value = raw == null ? "" : raw.trim();
-        if (value.isEmpty()) return null;
-        if (!value.matches("(?i)^https?://.*")) value = "https://" + value;
-        Uri uri = Uri.parse(value);
-        if (uri.getHost() == null || uri.getHost().isEmpty()) return null;
-        if (uri.getQuery() != null || uri.getFragment() != null) return value;
-        // Ordner-Adressen brauchen einen Schraegstrich am Ende, sonst stimmen die relativen Pfade der Web-App nicht.
-        String path = uri.getPath() == null ? "" : uri.getPath();
-        String lastSegment = path.substring(path.lastIndexOf('/') + 1);
-        if (!value.endsWith("/") && !lastSegment.contains(".")) value = value + "/";
-        return value;
+    /** Gruppencode aus einem Einladungslink (…/apps/find-mein-soon/?join=CODE), falls die App darueber geoeffnet wurde. */
+    private static String joinCode(Intent intent) {
+        Uri data = intent == null ? null : intent.getData();
+        if (data == null) return null;
+        String join = data.getQueryParameter("join");
+        if (join == null) return null;
+        String clean = join.toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9]", "");
+        return clean.isEmpty() ? null : clean;
     }
 }

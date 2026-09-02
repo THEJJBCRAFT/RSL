@@ -1,4 +1,4 @@
-const CACHE_NAME = "find-mein-soon-v1";
+const CACHE_NAME = "find-mein-soon-v2";
 const SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,7 @@ const SHELL = [
   "./icons/icon-maskable-512.png",
   "./vendor/leaflet/leaflet.css",
   "./vendor/leaflet/leaflet.js",
+  "./vendor/mqtt/mqtt.min.js",
   "./vendor/leaflet/images/marker-icon.png",
   "./vendor/leaflet/images/marker-shadow.png"
 ];

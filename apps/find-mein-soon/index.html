@@ -57,7 +57,7 @@
 
         <label id="codeField" hidden>
           <span>Gruppencode</span>
-          <input type="text" id="setupCode" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC123" class="code-input">
+          <input type="text" id="setupCode" maxlength="8" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD2345" class="code-input">
         </label>
 
         <p class="form-error" id="setupError" hidden></p>
@@ -80,8 +80,8 @@
         <strong>So funktioniert es</strong>
         <ol>
           <li>Gruppe erstellen und Code an alle schicken.</li>
-          <li>Jeder tippt seinen Namen und den Code ein.</li>
-          <li>Standort freigeben. Alle sehen sich auf der Karte.</li>
+          <li>Jeder tippt seinen Namen und den Code ein. Kein Konto, kein Server.</li>
+          <li>Standort freigeben. Alle sehen sich verschluesselt auf der Karte.</li>
           <li>Verloren? "Finde mich!" druecken. Alle bekommen Alarm.</li>
         </ol>
       </div>
@@ -154,7 +154,6 @@
         <h2>Find Mein Soon</h2>
         <p id="menuInfo"></p>
         <button type="button" class="ghost-button" id="menuInstall" hidden>Als App installieren</button>
-        <button type="button" class="ghost-button" id="menuServer" hidden>Server-Adresse aendern</button>
         <button type="button" class="ghost-button" id="menuRename">Namen aendern</button>
         <button type="button" class="ghost-button" id="menuPrivacy">Datenschutz</button>
         <button type="button" class="ghost-button danger" id="menuLeave">Gruppe verlassen</button>
@@ -166,9 +165,9 @@
     <div class="menu" id="privacy" hidden>
       <div class="menu-panel">
         <h2>Datenschutz</h2>
-        <p>Dein Standort wird nur an den Find-Mein-Soon-Server dieser Website gesendet und nur den Mitgliedern deiner Gruppe angezeigt. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
+        <p>Find Mein Soon hat keinen eigenen Server. Die Handys deiner Gruppe tauschen ihre Standorte ueber einen oeffentlichen Nachrichtendienst (MQTT-Broker) aus. Alle Daten werden vorher auf dem Handy mit einem Schluessel aus dem Gruppencode verschluesselt. Der Dienst sieht nur unlesbare Daten; entschluesseln kann nur, wer den Gruppencode kennt. Gib den Code deshalb nur an Leute weiter, die dich sehen duerfen.</p>
         <p>Karten werden von OpenStreetMap geladen. Dabei erhaelt OpenStreetMap deine IP-Adresse und den Kartenausschnitt.</p>
-        <p>Gruppen ohne Aktivitaet werden nach 30 Tagen automatisch geloescht. Mit "Gruppe verlassen" wird dein Eintrag sofort entfernt.</p>
+        <p>Beim Nachrichtendienst bleibt nur der letzte Stand jedes Mitglieds gespeichert. Mit "Gruppe verlassen" wird dein Eintrag dort geloescht. Es gibt kein Konto, keine Werbung und kein Tracking durch Dritte.</p>
         <button type="button" class="primary-button" id="privacyClose">Verstanden</button>
       </div>
     </div>
@@ -177,6 +176,7 @@
   </div>
 
   <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/mqtt/mqtt.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
