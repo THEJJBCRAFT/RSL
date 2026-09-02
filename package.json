@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js"
+    "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js && node --check apps/find-mein-soon/app.js && node --check apps/find-mein-soon/sw.js",
+    "icons:find-mein-soon": "node tools/make-find-mein-soon-icons.js"
   }
 }

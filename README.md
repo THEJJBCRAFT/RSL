@@ -32,6 +32,20 @@ CC3 Music:
   - Cover: `uploads/covers/`
   - Datenbank: `data/tracks.json`
 
+## Find Mein Soon (Handy-App)
+
+Find Mein Soon ist eine installierbare Web-App (PWA) zum Finden von Familie und Freunden:
+
+- App: `apps/find-mein-soon/index.html`
+- Auf dem Handy oeffnen und "Zum Startbildschirm hinzufuegen" waehlen, dann startet sie wie eine normale App.
+- Funktionen: Gruppe erstellen, Code teilen, Live-Karte mit allen Mitgliedern, Entfernung, Route, Treffpunkt, "Finde mich!"-Alarm mit Vibration und Ton, Standort pausieren.
+- Daten: `data/finder.json` (Gruppen werden nach 30 Tagen ohne Aktivitaet geloescht)
+- API: `/api/finder/groups`, `/api/finder/join`, `/api/finder/groups/<CODE>/...`
+- Icons neu erzeugen: `npm run icons:find-mein-soon`
+- Karte: Leaflet 1.9.4 liegt lokal in `apps/find-mein-soon/vendor/leaflet/` (BSD-Lizenz), Kartenkacheln kommen von OpenStreetMap.
+
+Wichtig: Standortfreigabe funktioniert im Browser nur ueber HTTPS oder `localhost`. Auf Render ist HTTPS automatisch aktiv.
+
 Wichtig:
 
 Impressum und Datenschutz enthalten Platzhalter. Vor einer echten Veroeffentlichung muessen dort echte Kontaktdaten, Verantwortliche, Dienste, Downloads und Datenschutzangaben eingetragen und geprueft werden.
