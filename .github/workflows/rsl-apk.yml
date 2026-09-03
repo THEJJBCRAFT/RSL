@@ -175,7 +175,8 @@ jobs:
             echo
             echo "Dieselbe Oberflaeche wie die Windows-App, fuers Handy gebaut: Menue unten im Daumenbereich, gleiche Farben und Bewegungen."
             echo
-            echo "Dabei sind: RSL AI (Video-Erzeugung direkt auf dem Geraet, Speichern in Filme/RSL und Teilen), Server-Status ueber das Minecraft-Protokoll inklusive SRV, Einstellungen und Info."
+            echo "Dabei sind: RSL AI (Video-Erzeugung direkt auf dem Geraet, Speichern in Filme/RSL und Teilen), Server-Status ueber das Minecraft-Protokoll inklusive SRV, Anmeldung mit dem Microsoft-Konto samt Pruefung auf Minecraft-Besitz, Einstellungen und Info."
+            echo "Fuer die Anmeldung wird einmalig eine kostenlose Microsoft-Anwendungs-ID gebraucht; die Anleitung steht in der App unter Konto und im README."
             echo "Nicht dabei: Launcher-Installationen und die AFK-Wache - beides braucht einen Rechner."
             echo
             echo "Installation: APK auf dem Handy herunterladen, oeffnen und die Installation aus unbekannten Quellen erlauben."
