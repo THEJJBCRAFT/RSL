@@ -58,9 +58,10 @@ export function settings(): View {
           <div class="setting__txt">
             <strong>Anwendungs-ID</strong>
             <span>
-              Die Anwendungs-ID (Client) aus deiner Azure-App-Registrierung. Ohne sie kann sich
-              die App nicht bei Microsoft anmelden. Sie ist kein Geheimnis &ndash; die Anleitung
-              steht im Konto-Bereich.
+              Die Anwendungs-ID (Client) aus deiner Azure-App-Registrierung. Sie steht dort auf der
+              Seite <strong>Übersicht</strong> direkt unter dem Namen &ndash; nicht die Objekt-ID
+              und nicht die Verzeichnis-ID. Ohne sie kann sich die App nicht bei Microsoft anmelden.
+              Sie ist kein Geheimnis; die ganze Anleitung steht im Konto-Bereich.
             </span>
           </div>
           <input class="input" id="clientId" type="text" spellcheck="false" autocapitalize="none"

@@ -238,7 +238,7 @@ check("Pille ist ausgeblendet", "true", await page.getAttribute("#pill", "data-o
 
 // Ohne Anwendungs-ID gibt es statt eines Anmelde-Knopfs die Anleitung.
 check("Anleitung statt Anmelde-Knopf", 0, await page.locator('[data-do="signin"]').count());
-check("Schritte werden erklaert", 4, await page.locator(".steps li").count());
+check("Schritte werden erklaert", 5, await page.locator(".steps li").count());
 await page.click('[data-do="azure"]');
 check("Azure-Portal wird geoeffnet", true, (await page.evaluate(() => window.__acct.opened)).includes("portal.azure.com"));
 

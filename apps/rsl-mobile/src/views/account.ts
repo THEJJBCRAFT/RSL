@@ -143,8 +143,14 @@ function setup(): string {
     <ol class="steps">
       <li>Im Azure-Portal auf <strong>App-Registrierungen</strong> gehen und eine neue Registrierung anlegen.</li>
       <li>Als Kontotyp <strong>Nur persönliche Microsoft-Konten</strong> wählen, keine Weiterleitungs-Adresse eintragen.</li>
-      <li>Unter <strong>Authentifizierung</strong> die Option <strong>Öffentliche Clientflows zulassen</strong> auf <strong>Ja</strong> stellen.</li>
-      <li>Die <strong>Anwendungs-ID (Client)</strong> kopieren und in den Einstellungen dieser App einfügen.</li>
+      <li>Links im Menü auf <strong>Authentifizierung</strong>, dort unten unter <strong>Erweiterte
+          Einstellungen</strong> die Option <strong>Öffentliche Clientflows zulassen</strong> auf
+          <strong>Ja</strong> stellen. Ohne das verlangt Microsoft ein Geheimnis, das eine
+          Handy-App nicht haben kann.</li>
+      <li>Zurück auf <strong>Übersicht</strong>: Dort steht direkt unter dem Namen die
+          <strong>Anwendungs-ID (Client)</strong> &ndash; die kopieren. Nicht die Objekt-ID und
+          nicht die Verzeichnis-ID (Mandant).</li>
+      <li>Die ID unten in den Einstellungen dieser App einfügen.</li>
     </ol>
     <div class="row">
       <button class="btn btn--ghost" data-fx data-do="azure">Azure-Portal öffnen</button>
