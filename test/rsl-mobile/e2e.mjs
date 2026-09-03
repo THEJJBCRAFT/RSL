@@ -172,7 +172,13 @@ check("Video ist groesser als ein Stueck (192 KiB)", true, size.length > 192 * 1
 
 check("Teilen ist vor dem Speichern verborgen", true, await page.locator("#shareVideo").isHidden());
 await page.click("#saveVideo");
-await page.waitForFunction(() => window.__rsl.saved !== null, null, { timeout: 30000 });
+// Auf das sichtbare Ergebnis warten, nicht auf den Zwischenstand in der Attrappe:
+// die Rueckmeldung geht denselben Weg wie bei der echten Huelle und braucht einen Moment.
+await page.waitForFunction(
+  () => document.querySelector("#viewerBadge").textContent === "In Filme/RSL gespeichert",
+  null,
+  { timeout: 30000 },
+);
 const saved = await page.evaluate(() => window.__rsl);
 check("Video kommt vollstaendig an", size.length, saved.saved.length);
 check("Video kommt unveraendert an", size.sum, saved.saved.sum);
