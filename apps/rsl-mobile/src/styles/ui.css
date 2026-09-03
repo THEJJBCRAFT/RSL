@@ -1,0 +1,440 @@
+/* ---------- Buehne & View-Wechsel ---------- */
+.stage {
+  position: relative;
+  overflow: hidden;
+}
+.view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 34px 40px 40px;
+  /* Der Compositor bekommt eine eigene Ebene nur während des Wechsels. */
+  contain: layout paint;
+}
+.view--leaving {
+  pointer-events: none;
+}
+
+/* Kinder fliegen gestaffelt ein; die Verzögerung setzt der Router. */
+.stagger {
+  opacity: 0;
+  transform: translate3d(0, 14px, 0);
+}
+.view--entered .stagger {
+  animation: riseIn 560ms var(--ease-out) forwards;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+@keyframes riseIn {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---------- Kopfbereich einer Ansicht ---------- */
+.head {
+  margin-bottom: 26px;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-bottom: 10px;
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--a1), transparent);
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 34px;
+  line-height: 1.12;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+h1 .grad {
+  background: linear-gradient(100deg, var(--a1), var(--a2) 60%, var(--a3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.lead {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--text-dim);
+  font-size: 14.5px;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: var(--r-md);
+  font-size: 13.5px;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  isolation: isolate;
+  /* Magnetische Verschiebung kommt aus JS über --dx/--dy. */
+  transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0);
+  transition:
+    transform var(--t-3) var(--ease-out),
+    border-color var(--t-2) var(--ease-out),
+    background-color var(--t-2) var(--ease-out),
+    box-shadow var(--t-3) var(--ease-out);
+}
+.btn:hover {
+  border-color: var(--line-hi);
+  background: var(--surface-hi);
+  box-shadow: var(--sh-2);
+}
+.btn:active {
+  transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) scale(0.972);
+  transition-duration: 90ms;
+}
+
+/* Lichtreflex, der dem Cursor folgt. */
+.btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(140px 90px at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.14), transparent 65%);
+  opacity: 0;
+  transition: opacity var(--t-2) var(--ease-out);
+}
+.btn:hover::before {
+  opacity: 1;
+}
+
+.btn--primary {
+  color: #08090f;
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  border-color: transparent;
+  font-weight: 640;
+}
+.btn--primary:hover {
+  box-shadow: 0 14px 40px -14px var(--a1);
+}
+/* Glanzstreifen laeuft beim Hover einmal durch. */
+.btn--primary::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 42%;
+  left: -60%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  transform: skewX(-18deg);
+  opacity: 0;
+}
+.btn--primary:hover::after {
+  animation: sheen 900ms var(--ease-out);
+}
+@keyframes sheen {
+  0% {
+    left: -60%;
+    opacity: 0.9;
+  }
+  100% {
+    left: 130%;
+    opacity: 0;
+  }
+}
+
+.btn--ghost {
+  background: transparent;
+}
+.btn--lg {
+  height: 48px;
+  padding: 0 26px;
+  font-size: 14.5px;
+}
+.btn__icon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform var(--t-3) var(--ease-spring);
+}
+.btn:hover .btn__icon {
+  transform: translateX(2px);
+}
+
+/* Wasserwelle beim Klick, per JS positioniert. */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45), transparent 70%);
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  z-index: -1;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ---------- Karten ---------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 14px;
+  margin-top: 28px;
+}
+.card {
+  position: relative;
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  isolation: isolate;
+  transform: translate3d(0, 0, 0);
+  transition:
+    transform var(--t-3) var(--ease-out),
+    border-color var(--t-2) var(--ease-out),
+    box-shadow var(--t-3) var(--ease-out);
+}
+.card:hover {
+  transform: translate3d(0, -4px, 0);
+  border-color: var(--line-hi);
+  box-shadow: var(--sh-3);
+}
+/* Der Rand leuchtet dort auf, wo der Cursor steht. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(220px 160px at var(--mx, 50%) var(--my, 50%), rgba(139, 108, 255, 0.7), transparent 65%);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--t-2) var(--ease-out);
+}
+.card:hover::before {
+  opacity: 1;
+}
+.card__icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: linear-gradient(135deg, var(--a1-soft), var(--a2-soft));
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+}
+.card__icon svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: var(--a2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.card h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.card p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---------- Kennzahlen ---------- */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+.stat {
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.stat__val {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.stat__lbl {
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+/* ---------- Einstellungen ---------- */
+.panel {
+  margin-top: 22px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow: hidden;
+}
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  transition: background-color var(--t-2) var(--ease-out);
+}
+.setting + .setting {
+  border-top: 1px solid var(--line);
+}
+.setting:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+.setting__txt {
+  flex: 1;
+}
+.setting__txt strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 560;
+}
+.setting__txt span {
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+
+/* Schalter mit federndem Knopf. */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  flex: none;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  transition:
+    background-color var(--t-2) var(--ease-out),
+    border-color var(--t-2) var(--ease-out);
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition:
+    transform var(--t-3) var(--ease-spring),
+    background-color var(--t-2) var(--ease-out),
+    width var(--t-1) var(--ease-out);
+}
+.switch:active::after {
+  width: 23px;
+}
+.switch[aria-checked="true"] {
+  background: linear-gradient(100deg, var(--a1), var(--a2));
+  border-color: transparent;
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(20px);
+  background: #0a0b11;
+}
+.switch[aria-checked="true"]:active::after {
+  transform: translateX(15px);
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 10px 18px;
+  margin-top: 22px;
+  font-size: 13.5px;
+}
+.kv dt {
+  color: var(--text-mute);
+}
+.kv dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+/* ---------- Kleinteile ---------- */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  vertical-align: middle;
+}
+code {
+  font-family: "Cascadia Code", ui-monospace, "Consolas", monospace;
+  font-size: 0.92em;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  user-select: text;
+}
+
+/* ---------- Abschaltbare Effekte (Einstellungen) ---------- */
+html[data-aurora="off"] #aurora {
+  opacity: 0 !important;
+}
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+  transition-duration: 1ms !important;
+}
+
+/* ---------- Kleine Schirme ---------- */
+@media (max-width: 420px) {
+  .view {
+    padding: 18px 16px 26px;
+  }
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

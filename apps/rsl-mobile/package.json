@@ -1,0 +1,17 @@
+{
+  "name": "rsl-mobile",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "RSL als eigenstaendige Android-App - gleiche Oberflaeche wie am Rechner, fuers Handy gebaut.",
+  "scripts": {
+    "dev": "vite",
+    "check": "tsc --noEmit",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}
