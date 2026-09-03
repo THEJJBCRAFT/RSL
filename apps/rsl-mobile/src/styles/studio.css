@@ -11,15 +11,18 @@
   border: 1px solid var(--line);
   background: linear-gradient(100deg, var(--a1-soft), transparent 60%);
 }
+
 .modelbar__id {
   display: flex;
   align-items: center;
   gap: 10px;
 }
+
 .modelbar__id strong {
   font-size: 15px;
   letter-spacing: 0.02em;
 }
+
 .modelbar__api {
   display: flex;
   align-items: center;
@@ -37,16 +40,20 @@
   gap: 22px;
   align-items: start;
 }
+
 @media (max-width: 1180px) {
   .studio {
     grid-template-columns: minmax(0, 1fr);
   }
+
 }
+
 .studio__left {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
+
 .studio__right {
   display: flex;
   flex-direction: column;
@@ -60,12 +67,14 @@
   gap: 6px;
   min-width: 0;
 }
+
 .field__lbl {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-mute);
 }
+
 .input {
   width: 100%;
   min-width: 0;
@@ -83,20 +92,24 @@
     background-color var(--t-2) var(--ease-out),
     box-shadow var(--t-2) var(--ease-out);
 }
+
 .input:hover {
   border-color: var(--line-hi);
 }
+
 .input:focus {
   outline: none;
   border-color: var(--a1);
   background: rgba(255, 255, 255, 0.06);
   box-shadow: 0 0 0 3px var(--a1-soft);
 }
+
 .input--area {
   resize: vertical;
   min-height: 92px;
   line-height: 1.55;
 }
+
 select.input {
   cursor: pointer;
   appearance: none;
@@ -109,6 +122,7 @@ select.input {
   background-repeat: no-repeat;
   padding-right: 30px;
 }
+
 select.input option {
   background: #12141f;
   color: var(--text);
@@ -119,10 +133,12 @@ select.input option {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
 }
+
 .seedrow {
   display: flex;
   gap: 8px;
 }
+
 .seedrow .input {
   flex: 1;
 }
@@ -133,6 +149,7 @@ select.input option {
   flex-wrap: wrap;
   gap: 7px;
 }
+
 .chip {
   padding: 5px 11px;
   border-radius: 99px;
@@ -146,12 +163,14 @@ select.input option {
     border-color var(--t-1) linear,
     background-color var(--t-1) linear;
 }
+
 .chip:hover {
   color: var(--text);
   border-color: var(--a1);
   background: var(--a1-soft);
   transform: translateY(-2px);
 }
+
 .chip:active {
   transform: translateY(0) scale(0.95);
 }
@@ -166,6 +185,7 @@ select.input option {
   background: #05060b;
   box-shadow: var(--sh-3);
 }
+
 .viewer canvas,
 .viewer video {
   position: absolute;
@@ -175,10 +195,12 @@ select.input option {
   object-fit: contain;
   display: block;
 }
+
 .viewer canvas[hidden],
 .viewer video[hidden] {
   display: none;
 }
+
 .viewer__badge {
   position: absolute;
   left: 12px;
@@ -207,9 +229,11 @@ select.input option {
   align-items: center;
   gap: 12px;
 }
+
 .progress[hidden] {
   display: none;
 }
+
 .progress__bar {
   flex: 1;
   height: 6px;
@@ -217,6 +241,7 @@ select.input option {
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
 }
+
 .progress__bar span {
   display: block;
   height: 100%;
@@ -226,6 +251,7 @@ select.input option {
   transform: scaleX(0);
   transition: transform 200ms linear;
 }
+
 .progress__txt {
   font-size: 12px;
   color: var(--text-mute);
@@ -243,26 +269,31 @@ select.input option {
   color: var(--text-mute);
   font-weight: 600;
 }
+
 .btn--sm {
   height: 32px;
   padding: 0 14px;
   font-size: 12.5px;
 }
+
 .btn--icon {
   width: 40px;
   padding: 0;
   flex: none;
 }
+
 .tag--done {
   color: #6fe0a8;
   border-color: rgba(111, 224, 168, 0.35);
   background: rgba(111, 224, 168, 0.1);
 }
+
 .tag--failed {
   color: #ff8d8d;
   border-color: rgba(255, 141, 141, 0.35);
   background: rgba(255, 141, 141, 0.1);
 }
+
 .tag--rendering {
   color: var(--a2);
   border-color: rgba(46, 230, 214, 0.35);
@@ -270,14 +301,13 @@ select.input option {
 }
 
 /* ---------- Server-Karten ---------- */
-.srvlist,
-.lnchlist {
+.srvlist {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
-.srv,
-.lnch {
+
+.srv {
   display: flex;
   gap: 16px;
   padding: 18px 20px;
@@ -288,13 +318,13 @@ select.input option {
     border-color var(--t-2) var(--ease-out),
     background-color var(--t-2) var(--ease-out);
 }
-.srv:hover,
-.lnch:hover {
+
+.srv:hover {
   border-color: var(--line-hi);
   background: var(--surface-hi);
 }
-.srv__icon,
-.lnch__icon {
+
+.srv__icon {
   width: 52px;
   height: 52px;
   flex: none;
@@ -305,43 +335,38 @@ select.input option {
   border: 1px solid var(--line);
   overflow: hidden;
 }
+
 .srv__icon img {
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
 }
+
 .srv__fallback {
   color: var(--a2);
   font-size: 20px;
 }
-.lnch__icon svg {
-  width: 26px;
-  height: 26px;
-  fill: none;
-  stroke: var(--a2);
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.srv__main,
-.lnch__main {
+
+.srv__main {
   flex: 1;
   min-width: 0;
 }
-.srv__title,
-.lnch__title {
+
+.srv__title {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
-.srv__title strong,
-.lnch__title strong {
+
+.srv__title strong {
   font-size: 15px;
 }
+
 .srv__host {
   user-select: text;
 }
+
 .srv__motd {
   margin: 6px 0 10px;
   font-size: 13px;
@@ -350,6 +375,7 @@ select.input option {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 .srv__stats {
   display: flex;
   gap: 22px;
@@ -357,208 +383,13 @@ select.input option {
   color: var(--text-mute);
   font-variant-numeric: tabular-nums;
 }
+
 .srv__stats b {
   color: var(--text);
   font-size: 15px;
 }
+
 .srv__note {
   font-size: 12.5px;
   color: var(--text-mute);
-}
-.lnch__main p {
-  margin: 6px 0 12px;
-  font-size: 13px;
-  color: var(--text-dim);
-}
-.lnch__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.lnch__info {
-  font-size: 12px;
-  color: var(--text-mute);
-}
-.lnch .progress {
-  margin-top: 10px;
-}
-
-/* ---------- AFK-Wache ---------- */
-.afk__host {
-  width: 220px;
-  flex: none;
-}
-.msa {
-  margin-top: 16px;
-  padding: 18px 20px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--a1);
-  background: var(--a1-soft);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.msa__txt p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text-dim);
-}
-.msa__code {
-  font-family: "Cascadia Code", ui-monospace, Consolas, monospace;
-  font-size: 30px;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  text-align: center;
-  padding: 12px;
-  border-radius: var(--r-md);
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--line);
-  user-select: text;
-}
-.afk__notes {
-  margin-top: 20px;
-  font-size: 12.5px;
-  color: var(--text-mute);
-}
-.afk__notes p {
-  margin: 4px 0;
-}
-
-/* ---------- Server-Chat & Log ---------- */
-.chathead {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-}
-.chatbox {
-  margin-top: 12px;
-  max-height: 320px;
-  overflow-y: auto;
-  padding: 12px 14px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background: rgba(0, 0, 0, 0.28);
-  font-size: 12.5px;
-  line-height: 1.55;
-}
-.chatbox__empty {
-  color: var(--text-mute);
-}
-.chatline {
-  display: flex;
-  gap: 10px;
-  user-select: text;
-}
-.chatline time {
-  flex: none;
-  color: var(--text-mute);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
-  padding-top: 1px;
-}
-.chatline span {
-  overflow-wrap: anywhere;
-}
-.chatline--info span {
-  color: var(--a2);
-  font-style: italic;
-}
-.chatline--error span {
-  color: #ff8d8d;
-}
-
-/* ---------- AFK-Slots ---------- */
-.slotlist {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.slot {
-  padding: 12px 16px;
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  background: var(--surface);
-}
-.slot__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.slot__user {
-  font-size: 12.5px;
-  color: var(--text-dim);
-}
-.slot__detail {
-  margin-top: 6px;
-  font-size: 12px;
-  color: var(--text-mute);
-}
-.slot__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.slot__row .input {
-  width: auto;
-  min-width: 150px;
-  flex: 0 1 auto;
-  padding: 7px 10px;
-  font-size: 12.5px;
-}
-.slot__cmd {
-  max-width: 110px;
-}
-.slot__main {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-dim);
-  cursor: pointer;
-  user-select: none;
-}
-.slot__msa {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--a1);
-  background: var(--a1-soft);
-  font-size: 12.5px;
-}
-.slot__code {
-  font-family: "Cascadia Code", ui-monospace, Consolas, monospace;
-  font-size: 17px;
-  letter-spacing: 0.18em;
-  user-select: text;
-}
-
-/* ---------- Chat senden ---------- */
-.chatsend {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-.chatsend select {
-  width: 170px;
-  flex: none;
-  padding: 8px 10px;
-  font-size: 12.5px;
-}
-.chatsend input {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 13px;
-}
-.chatline--self span {
-  color: var(--a1);
-  font-weight: 600;
 }
