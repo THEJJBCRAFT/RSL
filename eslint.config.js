@@ -1,4 +1,5 @@
-// ESLint fuer Find Mein Soon (Web-App, Tests, Werkzeuge). Die uebrige Website bleibt unangetastet.
+// ESLint fuer Find Mein Soon (Web-App, Tests, Werkzeuge) und die Tests der RSL-App.
+// Die uebrige Website und das TypeScript in apps/rsl-mobile bleiben unangetastet (dort prueft tsc).
 const js = require("@eslint/js");
 
 const browserGlobals = {
@@ -35,7 +36,7 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: browserGlobals }
   },
   {
-    files: ["test/find-mein-soon/**/*.mjs", "tools/update-find-mein-soon-vendor.mjs"],
+    files: ["test/find-mein-soon/**/*.mjs", "test/rsl-mobile/**/*.mjs", "tools/update-find-mein-soon-vendor.mjs"],
     ...js.configs.recommended,
     languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: { ...nodeGlobals, ...browserGlobals } },
     rules: {

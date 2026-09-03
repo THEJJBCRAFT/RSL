@@ -30,6 +30,11 @@ body {
   background: var(--a1-soft);
 }
 
+/* Eigene display-Regeln (z. B. .btn) wuerden das Verstecken sonst aushebeln. */
+[hidden] {
+  display: none !important;
+}
+
 button {
   font: inherit;
   color: inherit;

@@ -129,15 +129,6 @@ function limitsFor(model: string): ModelCard["limits"] {
   return (MODELS.find((m) => m.id === model) ?? MODELS[0]!).limits;
 }
 
-/** Es gibt keine Adresse mehr - die Warteschlange steckt in der App. */
-export function apiBase(): Promise<string> {
-  return Promise.resolve("app://rsl");
-}
-
-export function isReachable(): Promise<boolean> {
-  return Promise.resolve(true);
-}
-
 export function listModels(): Promise<{ models: ModelCard[] }> {
   return Promise.resolve({ models: MODELS.map((m) => ({ ...m })) });
 }

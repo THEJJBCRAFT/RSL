@@ -10,10 +10,12 @@
   "scripts": {
     "start": "node server.js",
     "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js && npm run lint",
-    "lint": "eslint apps/find-mein-soon test/find-mein-soon tools/update-find-mein-soon-vendor.mjs",
-    "test": "npm run test:unit && npm run test:e2e",
+    "lint": "eslint apps/find-mein-soon test/find-mein-soon test/rsl-mobile tools/update-find-mein-soon-vendor.mjs",
+    "test": "npm run test:unit && npm run test:e2e && npm run test:rsl-mobile",
     "test:unit": "node --test test/find-mein-soon/*.test.mjs",
     "test:e2e": "node test/find-mein-soon/e2e/run.mjs",
+    "build:rsl-mobile": "npm --prefix apps/rsl-mobile ci && npm --prefix apps/rsl-mobile run build",
+    "test:rsl-mobile": "node test/rsl-mobile/run-java.mjs && node test/rsl-mobile/e2e.mjs",
     "icons:find-mein-soon": "node tools/make-find-mein-soon-icons.js",
     "vendor:find-mein-soon": "node tools/update-find-mein-soon-vendor.mjs"
   },

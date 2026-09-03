@@ -4,7 +4,7 @@ import { makeScreenplay } from "../ai/script";
 import { startPreview } from "../ai/recorder";
 import { onWorkerEvent } from "../ai/worker";
 import * as api from "../lib/videoapi";
-import { IS_NATIVE, saveVideo } from "../lib/native";
+import { IS_NATIVE, saveVideo, canShareVideo, shareVideo } from "../lib/native";
 
 const EXAMPLE = "Anime-Mädchen mit langen rosa Haaren und blauen Augen, Schuluniform, Dach, Sonnenuntergang, Kirschblüten, ruhig, langsamer Zoom";
 
@@ -128,6 +128,7 @@ export function ai(): View {
             </button>
             <button class="btn btn--ghost" id="mkScript" data-fx title="Baut aus der aktuellen Eingabe ein komplettes Drehbuch">Drehbuch erzeugen</button>
             <button class="btn btn--ghost" id="saveVideo" data-fx>Video speichern</button>
+            <button class="btn btn--ghost" id="shareVideo" data-fx hidden>Teilen</button>
           </div>
 
           <div class="progress" id="progress" hidden>
@@ -337,7 +338,10 @@ export function ai(): View {
       };
 
       // Auf dem Handy gibt es keinen Ordner zum Oeffnen: Das fertige Video wandert
-      // auf Wunsch in die Downloads, von dort laesst es sich teilen.
+      // auf Wunsch in die Galerie (Filme/RSL), von dort laesst es sich teilen.
+      const shareBtn = $("#shareVideo") as HTMLButtonElement;
+      shareBtn.hidden = !canShareVideo();
+
       $("#saveVideo").addEventListener("click", () => {
         const blob = lastResultId ? api.videoBlob(lastResultId) : null;
         if (!blob) {
@@ -351,8 +355,11 @@ export function ai(): View {
         badge.textContent = "wird gespeichert \u2026";
         void saveVideo(`rsl-${lastResultId}.webm`, blob).then((r) => {
           badge.textContent = r.message;
+          shareBtn.hidden = !r.ok;
         });
       });
+
+      shareBtn.addEventListener("click", () => shareVideo());
 
       /* ---------------------------- Zustand ---------------------------- */
 

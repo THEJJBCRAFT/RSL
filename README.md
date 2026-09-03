@@ -113,6 +113,70 @@ Wichtig:
 
 Impressum und Datenschutz enthalten Platzhalter. Vor einer echten Veroeffentlichung muessen dort echte Kontaktdaten, Verantwortliche, Dienste, Downloads und Datenschutzangaben eingetragen und geprueft werden.
 
+## RSL (Handy-App)
+
+Die RSL-App gibt es jetzt auch fuer Android. Sie ist keine Umverpackung der Windows-App, sondern eine
+eigene App mit derselben Oberflaeche: gleiche Farben, Schriften, Aurora und Bewegungen, nur fuers Handy
+gebaut - keine Fensterknoepfe, Menue unten im Daumenbereich, grosse Flaechen zum Antippen.
+
+Dabei sind:
+
+- **RSL AI**: erzeugt kurze Anime-Clips aus einem Prompt oder einem Drehbuch. Gerechnet wird auf dem
+  Geraet (Canvas + MediaRecorder), nichts wird hochgeladen. Die Auftragsverwaltung, die am Rechner ein
+  lokaler HTTP-Dienst im Rust-Teil war, liegt hier in der App - dieselbe Schnittstelle, dieselbe
+  Render-Einheit. Fertige Videos wandern auf Wunsch nach `Filme/RSL` und lassen sich von dort teilen.
+- **Server**: Live-Status der Minecraft-Server direkt ueber das Server-List-Ping-Protokoll, inklusive
+  SRV-Aufloesung (`_minecraft._tcp.<host>`). Kein fremder Status-Dienst. Der Ping braucht eine rohe
+  TCP-Verbindung, die ein Browser nicht oeffnen darf - darum macht ihn die Android-Huelle in Java.
+- **Einstellungen** (Animationen, Hintergrundlicht, Klickgeraeusche) und **Info**.
+
+Nicht dabei: die Launcher-Installationen (die richten Windows-Programme ein) und die AFK-Wache
+(die braucht einen laufenden Node-Bot). Die AFK-Wache soll spaeter als Fernsteuerung fuer einen
+Rechner oder Server nachgereicht werden.
+
+Ordner:
+
+- `apps/rsl-mobile/` - die Oberflaeche (TypeScript + Vite, ohne Framework)
+- `android/rsl/` - die Android-Huelle (WebView, Minecraft-Ping, Video speichern und teilen)
+- `test/rsl-mobile/` - die Tests
+
+Selbst pruefen und bauen (Node 22, JDK 17):
+
+```
+npm --prefix apps/rsl-mobile ci
+npm --prefix apps/rsl-mobile run build   # tsc --noEmit und vite build
+node test/rsl-mobile/run-java.mjs        # Minecraft-Ping und SRV gegen einen nachgebauten Server
+npx playwright install chromium          # einmalig
+node test/rsl-mobile/e2e.mjs             # Handy-Groesse, nachgebaute Huelle, echtes Video erzeugen und speichern
+```
+
+Kurz: `npm run test:rsl-mobile` laeuft beides nacheinander.
+
+### Android-App (APK)
+
+Die APK wird von GitHub gebaut und enthaelt die Oberflaeche als Assets. Sie laedt nichts von einer
+Website nach; Netz braucht sie nur fuer den Server-Ping.
+
+- Download der fertigen APK: `https://github.com/THEJJBCRAFT/RSL/releases/download/rsl-latest/RSL.apk`
+- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben.
+- Bauen: auf GitHub unter `Actions` den Workflow `RSL APK` oeffnen und `Run workflow` klicken (oder auf
+  `main` pushen, wenn sich etwas unter `android/rsl/`, `apps/rsl-mobile/` oder `test/rsl-mobile/` aendert).
+  Vor dem Bauen laufen Typpruefung, Protokoll-Tests und der Ende-zu-Ende-Lauf; eine kaputte Oberflaeche
+  landet nicht in der APK.
+- Signatur-Schluessel: dieselben Secrets wie bei Find Mein Soon (`ANDROID_KEYSTORE_BASE64`,
+  `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`). Ohne sie wird bei jedem
+  Build ein neuer Schluessel erzeugt, und Android verlangt vor einem Update die Deinstallation.
+
+Lokal bauen (Android SDK und JDK 17 noetig):
+
+```
+npm --prefix apps/rsl-mobile ci && npm --prefix apps/rsl-mobile run build
+cd android/rsl && ./gradlew assembleRelease
+```
+
+Die Huelle erwartet den fertigen Vite-Build unter `apps/rsl-mobile/dist`; fehlt er, sagt Gradle es
+direkt beim Start.
+
 ## GitHub + Render Hosting
 
 Diese Seite ist fuer GitHub und Render vorbereitet.

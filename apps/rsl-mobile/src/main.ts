@@ -44,7 +44,7 @@ function boot(): void {
 
   initPointerFx();
   initClickSounds();
-  // Render-Einheit für die Video-API: nimmt Aufträge entgegen, auch von außen.
+  // Render-Einheit für RSL AI: arbeitet die Warteschlange ab, sobald ein Auftrag da ist.
   startWorker();
   startAurora(q<HTMLCanvasElement>("#aurora"));
 
@@ -63,6 +63,14 @@ function boot(): void {
   });
 
   router.go(ROUTES[0]!.id);
+
+  // Zurück-Taste auf dem Handy: erst zurück auf Start, dann darf die Hülle schließen.
+  window.rslOnBack = (): boolean => {
+    const first = ROUTES[0]!.id;
+    if (router.current === first) return false;
+    router.go(first);
+    return true;
+  };
 
   // Boot-Sequenz: Logo zeichnen, dann Shell aufblenden, dann Fenster zeigen.
   root.dataset.boot = "running";
