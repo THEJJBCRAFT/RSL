@@ -29,7 +29,9 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       // cache: "reload" umgeht den HTTP-Cache, damit nie eine alte Datei in einen neuen Cache wandert.
-      .then(cache => Promise.allSettled(SHELL.map(url => cache.add(new Request(url, { cache: "reload" })))))
+      // Promise.all statt allSettled: Faellt eine Datei aus, wird gar nicht erst umgestellt und der alte,
+      // vollstaendige Cache bleibt erhalten (sonst waere die App offline halb neu und halb alt).
+      .then(cache => Promise.all(SHELL.map(url => cache.add(new Request(url, { cache: "reload" })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -78,7 +80,8 @@ self.addEventListener("fetch", event => {
           }
           return response;
         })
-        .catch(() => cached);
+        // Ohne Netz und ohne Cache-Eintrag muss trotzdem eine Antwort zurueckkommen.
+        .catch(() => cached || new Response("Offline", { status: 504, statusText: "Offline" }));
       return cached || network;
     })
   );

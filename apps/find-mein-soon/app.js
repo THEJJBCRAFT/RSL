@@ -98,6 +98,8 @@ import { createMap } from "./map.js";
     ownAlertMessage: $("ownAlertMessage"),
     ownAlertEnd: $("ownAlertEnd"),
     notifyCard: $("notifyCard"),
+    notifyTitle: $("notifyTitle"),
+    notifyText: $("notifyText"),
     notifyAllow: $("notifyAllow"),
     notifyLater: $("notifyLater"),
     dialog: $("dialog"),
@@ -172,7 +174,8 @@ import { createMap } from "./map.js";
     renderQueued: false,
     membersKey: "",
     alertsChecked: false,
-    alertKey: ""
+    alertKey: "",
+    nativeNotifications: null
   };
 
   // Verbindung zur Gruppe (serverlos ueber einen oeffentlichen MQTT-Broker). Die Netzschicht meldet sich ueber Hooks.
@@ -308,6 +311,12 @@ import { createMap } from "./map.js";
       if (!state.session) return;
       if (granted) geo.startWatch();
       else showGeoCard("denied");
+    };
+    // Antwort der Android-App auf die Benachrichtigungs-Berechtigung.
+    window.fmsNotifications = granted => {
+      state.nativeNotifications = Boolean(granted);
+      if (!granted && state.session) showNotifyDeniedCard();
+      else if (granted) el.notifyCard.hidden = true;
     };
     window.fmsBack = () => {
       if (state.dialogResolve) {
@@ -769,6 +778,11 @@ import { createMap } from "./map.js";
     });
     el.notifyAllow.addEventListener("click", async () => {
       el.notifyCard.hidden = true;
+      if (nativeBridge) {
+        // In der Android-App ist die Berechtigung schon abgefragt worden: hier hilft nur noch der Weg ueber die Einstellungen.
+        try { nativeBridge.openSettings(); } catch {}
+        return;
+      }
       try {
         const result = await Notification.requestPermission();
         toast(result === "granted" ? "Benachrichtigungen sind an." : "Benachrichtigungen bleiben aus.");
@@ -927,6 +941,14 @@ import { createMap } from "./map.js";
     el.iosCard.hidden = false;
   }
 
+  /** Android-App: Ohne Benachrichtigungen kommt im Hintergrund kein Alarm an. Das muss man sehen und reparieren koennen. */
+  function showNotifyDeniedCard() {
+    el.notifyTitle.textContent = "Benachrichtigungen sind aus";
+    el.notifyText.textContent = "Ohne sie bekommst du keinen Alarm, wenn die App im Hintergrund ist.";
+    el.notifyAllow.textContent = "Einstellungen öffnen";
+    el.notifyCard.hidden = false;
+  }
+
   function showNotifyCardIfUseful() {
     if (nativeBridge || !("Notification" in window) || Notification.permission !== "default") return;
     let dismissed = false;
@@ -1040,11 +1062,15 @@ import { createMap } from "./map.js";
   function scheduleRender() {
     if (state.renderQueued) return;
     state.renderQueued = true;
-    requestAnimationFrame(() => {
+    const run = () => {
       state.renderQueued = false;
       rebuildGroup();
       render();
-    });
+    };
+    // Im Hintergrund zeichnet der Browser keine Bilder mehr. Dort sofort verarbeiten, sonst kaeme ein Alarm erst
+    // an, wenn jemand die App wieder aufmacht.
+    if (document.visibilityState === "visible") requestAnimationFrame(run);
+    else setTimeout(run, 0);
   }
 
   function renderMarkers() {
@@ -1366,8 +1392,9 @@ import { createMap } from "./map.js";
 
   function notifyAlert(member) {
     vibrate([300, 120, 300, 120, 500]);
-    // In der Android-App uebernimmt im Hintergrund die Benachrichtigung den Ton; die Sirene nur, wenn die App sichtbar ist.
-    if (!nativeBridge || document.visibilityState === "visible") startAlarmSound();
+    // In der Android-App uebernimmt im Hintergrund die Benachrichtigung den Ton; die Sirene nur, wenn die App sichtbar
+    // ist oder wenn Benachrichtigungen abgeschaltet sind (dann gaebe es sonst gar keinen Ton).
+    if (!nativeBridge || document.visibilityState === "visible" || state.nativeNotifications === false) startAlarmSound();
     showAlertNotification(member);
     if (member.lat !== null) mapView.focus(member.lat, member.lng);
   }
@@ -1738,7 +1765,10 @@ import { createMap } from "./map.js";
   /** Eigene Zaehlnummer fuer den Wiedereinspiel-Schutz: steigt mit jeder gesendeten Nachricht. */
   function nextSeq() {
     if (!state.session) return 0;
-    state.session.seq = (Number(state.session.seq) || 0) + 1;
+    // Ein zweiter offener Tab teilt sich die Sitzung: den gespeicherten Stand mitlesen, damit die Nummer nie faellt.
+    let stored = 0;
+    try { stored = Number(JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}").seq) || 0; } catch {}
+    state.session.seq = Math.max(Number(state.session.seq) || 0, stored) + 1;
     saveSession();
     return state.session.seq;
   }
@@ -1755,11 +1785,13 @@ import { createMap } from "./map.js";
       ts: Date.now(),
       proto: PROTOCOL_VERSION,
       by: state.session.memberId,
-      seq: nextSeq()
+      seq: nextSeq(),
+      // Fortlaufende Nummer der Gruppendaten: schuetzt davor, dass ein mitgeschnittener alter Treffpunkt
+      // wieder eingespielt wird, und kommt ohne Uhrenvergleich aus.
+      rev: (Number(net.meta?.rev) || 0) + 1
     };
     await net.publish(`${net.root}/meta`, meta, META_EXPIRY_S);
-    net.meta = meta;
-    net.metaFresh = true;
+    net.noteOwnMeta(meta);
     rebuildGroup();
     render();
   }

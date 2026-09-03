@@ -53,9 +53,13 @@ export function createNet(hooks) {
 
   function persistSeen() {
     if (!hooks.persistSeen) return;
-    const cutoff = Date.now() - MEMBER_EXPIRY_S * 1000;
-    // Nach unserer eigenen Uhr aufraeumen, nicht nach der des Absenders.
-    for (const [key, mark] of net.seen) if (!mark || !(mark.at > cutoff)) net.seen.delete(key);
+    // Nach unserer eigenen Uhr aufraeumen, nicht nach der des Absenders, und jede Marke so lange behalten,
+    // wie die Nachricht gilt, die sie schuetzt.
+    const now = Date.now();
+    for (const [key, mark] of net.seen) {
+      const maxAge = (key === "meta" ? META_EXPIRY_S : MEMBER_EXPIRY_S) * 1000;
+      if (!mark || !(mark.at > now - maxAge)) net.seen.delete(key);
+    }
     hooks.persistSeen(Object.fromEntries(net.seen));
   }
 
@@ -82,6 +86,17 @@ export function createNet(hooks) {
 
   function nextSeq() {
     return hooks.nextSeq ? hooks.nextSeq() : 0;
+  }
+
+  /** Eigene Gruppendaten nach dem Senden uebernehmen, damit ein sofort danach eingespielter alter Stand nicht greift. */
+  function noteOwnMeta(meta) {
+    net.meta = meta;
+    net.metaFresh = true;
+    const rev = Number(meta.rev);
+    if (Number.isFinite(rev) && rev > 0) {
+      net.seen.set("meta", { seq: rev, rev, by: String(meta.by || "?"), ts: Number(meta.ts) || 0, at: Date.now() });
+      persistSeen();
+    }
   }
 
   /**
@@ -141,7 +156,13 @@ export function createNet(hooks) {
     const stored = hooks.loadSeen ? hooks.loadSeen(session) : null;
     net.seen = new Map(Object.entries(stored || {})
       .filter(([, mark]) => mark && typeof mark === "object" && Number.isFinite(Number(mark.seq)))
-      .map(([key, mark]) => [key, { seq: Number(mark.seq), ts: Number(mark.ts) || 0, at: Number(mark.at) || 0 }]));
+      .map(([key, mark]) => [key, {
+        seq: Number(mark.seq),
+        ts: Number(mark.ts) || 0,
+        at: Number(mark.at) || 0,
+        rev: Number(mark.rev) || 0,
+        by: String(mark.by || "")
+      }]));
     net.brokers = hooks.brokers();
 
     let lastError = null;
@@ -376,19 +397,26 @@ export function createNet(hooks) {
     }
 
     if (sub === "meta") {
-      // Gruppendaten: Der Schutz gilt je schreibendem Mitglied. Zwischen verschiedenen Schreibern zaehlt weiter die
-      // Reihenfolge des Dienstes, sonst wuerde die vorgehende Uhr eines Handys die Aenderungen aller anderen verwerfen.
+      // Gruppendaten tragen eine fortlaufende Nummer der Gruppe: nur hoehere gelten, bei gleichem Stand entscheidet
+      // die Mitgliedskennung, damit alle Handys dasselbe sehen. Uhren spielen dabei keine Rolle.
       const by = /^[a-z0-9]{1,32}$/.test(String(data.by || "")) ? String(data.by) : "?";
-      const mark = replayMark(`meta:${by}`, data);
-      if (mark === null) return;
-      rememberMark(`meta:${by}`, mark);
+      const rev = Number(data.rev);
+      const ts = Number(data.ts || 0);
+      if (Number.isFinite(rev) && rev > 0) {
+        const floor = net.seen.get("meta");
+        if (floor && floor.rev > 0 && (rev < floor.rev || (rev === floor.rev && by < floor.by))) return;
+        net.seen.set("meta", { seq: rev, rev, by, ts, at: Date.now() });
+        persistSeen();
+      } else if (net.meta && ts < Number(net.meta.ts || 0)) {
+        return; // aeltere App-Version ohne Nummer: wie frueher nach Zeitstempel ordnen
+      }
       net.metaFresh = true;
       net.meta = {
         name: cleanText(data.name, 40) || net.meta?.name || null,
         meetingPoint: sanitizeMeeting(data.meetingPoint),
-        ts: Number(data.ts || 0),
+        ts,
         by,
-        seq: mark ? mark.seq : 0
+        rev: Number.isFinite(rev) && rev > 0 ? rev : 0
       };
     } else {
       if (sub === hooks.getSession()?.memberId) return; // eigener Eintrag: der lokale Zustand ist aktueller
@@ -470,6 +498,7 @@ export function createNet(hooks) {
   net.reset = resetNet;
   net.publish = publish;
   net.publishSelf = publishSelf;
+  net.noteOwnMeta = noteOwnMeta;
   net.leave = leaveNet;
   return net;
 }

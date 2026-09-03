@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Build;
@@ -85,7 +86,9 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     private String pendingGeoOrigin;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private boolean sharingWanted;
-    private boolean resumed;
+    /** Sichtbar (onStart bis onStop), nicht nur im Vordergrund: im geteilten Bildschirm laeuft die Sirene der Seite weiter. */
+    private boolean visible;
+    private String pendingJoinCode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -112,25 +115,39 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         setIntent(intent);
         String code = joinCode(intent);
         if (code == null) return;
+        pendingJoinCode = code;
         String current = webView == null ? null : webView.getUrl();
         if (current != null && current.startsWith(APP_URL)) {
             // Die App laeuft schon: ein Fragment-Link wuerde die Seite nicht neu laden, deshalb den Code direkt uebergeben.
-            webView.evaluateJavascript("window.fmsJoin && window.fmsJoin(" + JSONObject.quote(code) + ")", null);
+            deliverJoinCode();
         } else {
+            pendingJoinCode = null; // die Adresse traegt den Code selbst
             loadApp(intent);
         }
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        resumed = true;
+    /**
+     * Uebergibt einen Einladungscode an die laufende Seite. Ist sie noch nicht so weit, bleibt der Code liegen und
+     * wird nach dem Laden erneut zugestellt (onPageFinished), statt still verloren zu gehen.
+     */
+    private void deliverJoinCode() {
+        if (webView == null || pendingJoinCode == null) return;
+        String script = "(function(){ if (window.fmsJoin) { window.fmsJoin(" + JSONObject.quote(pendingJoinCode) + "); return 'ok'; } return 'wait'; })()";
+        webView.evaluateJavascript(script, value -> {
+            if ("\"ok\"".equals(value)) pendingJoinCode = null;
+        });
     }
 
     @Override
-    protected void onPause() {
-        resumed = false;
-        super.onPause();
+    protected void onStart() {
+        super.onStart();
+        visible = true;
+    }
+
+    @Override
+    protected void onStop() {
+        visible = false;
+        super.onStop();
     }
 
     @Override
@@ -186,6 +203,7 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
             if (webView != null) webView.evaluateJavascript("window.fmsPermission && window.fmsPermission(" + granted + ")", null);
         } else if (requestCode == REQUEST_NOTIFICATIONS) {
             if (sharingWanted) startSharingService();
+            reportNotificationState();
         }
     }
 
@@ -268,8 +286,8 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         String text = message == null || message.isEmpty() ? getString(R.string.alarm_text_default) : message;
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(this, resumed ? CHANNEL_ALARM_QUIET : CHANNEL_ALARM)
-                : legacyAlarmBuilder(resumed);
+                ? new Notification.Builder(this, visible ? CHANNEL_ALARM_QUIET : CHANNEL_ALARM)
+                : legacyAlarmBuilder(visible);
         builder.setSmallIcon(R.drawable.ic_stat_pin)
                 .setContentTitle(title)
                 .setContentText(text)
@@ -292,8 +310,25 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     @SuppressWarnings("deprecation")
     private Notification.Builder legacyAlarmBuilder(boolean quiet) {
         Notification.Builder builder = new Notification.Builder(this).setPriority(Notification.PRIORITY_MAX);
-        if (!quiet) builder.setDefaults(Notification.DEFAULT_ALL);
+        if (!quiet) {
+            // Vor Android 8 gibt es keine Kanaele: Alarmton und Vibration ausdruecklich setzen, sonst kaeme nur der
+            // leise Benachrichtigungston, der im Lautlos-Modus ganz ausfaellt.
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM), AudioManager.STREAM_ALARM)
+                    .setVibrate(new long[] { 0, 400, 150, 400, 150, 600 })
+                    .setLights(0xFFFF3248, 500, 500);
+        }
         return builder;
+    }
+
+    /** Meldet der Seite, ob Benachrichtigungen erlaubt sind; ohne sie kommt im Hintergrund kein Alarm an. */
+    private void reportNotificationState() {
+        if (webView == null) return;
+        webView.evaluateJavascript("window.fmsNotifications && window.fmsNotifications(" + notificationsEnabled() + ")", null);
+    }
+
+    private boolean notificationsEnabled() {
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        return manager == null || manager.areNotificationsEnabled();
     }
 
     private void clearAlarmNotification() {
@@ -322,7 +357,10 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
                         && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                     requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQUEST_NOTIFICATIONS);
+                    return;
                 }
+                // Nichts abzufragen: den aktuellen Stand sofort melden (auch ein frueheres "Nein" zaehlt).
+                reportNotificationState();
             });
         }
 

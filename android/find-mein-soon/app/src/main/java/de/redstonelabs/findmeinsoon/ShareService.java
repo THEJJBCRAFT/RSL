@@ -133,6 +133,9 @@ public class ShareService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
+        // Ein frisch gestarteter Dienst faengt immer mit voller Genauigkeit an; der Stromsparmodus ist ein
+        // statischer Wert und wuerde sonst aus einem frueheren Lauf uebrig bleiben.
+        if (!running) lowPower = false;
         showForeground();
         startLocationUpdates();
         running = true;
@@ -148,6 +151,7 @@ public class ShareService extends Service {
     @Override
     public void onDestroy() {
         running = false;
+        lowPower = false;
         stopLocationUpdates();
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         wakeLock = null;

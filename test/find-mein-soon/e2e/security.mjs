@@ -175,6 +175,8 @@ export default async function run({ browser, errors, base, broker, devices, mqtt
   await skew.page.fill("#dialogInput", "Vorgehende Uhr");
   await skew.page.click("#dialogOk");
   await a.page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Vorgehende Uhr"), null, { timeout: 15000 });
+  // Diesen Stand mitschneiden: Er darf spaeter nicht ueber die neuere Aenderung von A gelegt werden koennen.
+  const oldMeta = (await retained(`${root}/meta`)).get(`${root}/meta`);
   await a.page.click("#meetingButton");
   await a.page.click("#map", { position: { x: 220, y: 150 } });
   await a.page.waitForSelector("#dialog:not([hidden])");
@@ -190,6 +192,12 @@ export default async function run({ browser, errors, base, broker, devices, mqtt
   };
   await seesCorrection(a.page, "Änderung trotz vorgehender Uhr bei A sichtbar");
   await seesCorrection(skew.page, "Änderung auch auf dem Handy mit vorgehender Uhr sichtbar");
+  // Der mitgeschnittene aeltere Treffpunkt eines anderen Mitglieds darf die Aenderung nicht zurueckdrehen.
+  await rawPublish(`${root}/meta`, oldMeta);
+  await a.page.waitForTimeout(2000);
+  check("Wiedereingespielte alte Gruppendaten drehen den Treffpunkt nicht zurück",
+    (await a.page.textContent("#meetingLabel")).includes("Korrigiert") && (await skew.page.textContent("#meetingLabel")).includes("Korrigiert"));
+
   await skew.page.click("#menuButton");
   await skew.page.click("#menuLeave");
   await skew.page.waitForSelector("#dialog:not([hidden])");
