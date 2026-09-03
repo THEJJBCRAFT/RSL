@@ -22,10 +22,15 @@
       </div>
     </nav>
 
-    <div class="store-shell">
-      <div class="store-bar">
+    <div class="store-bar">
+      <div class="store-bar__inner">
         <a class="store-mark" href="index.html">
-          <img src="../../assets/img/rsl_logo.png" alt="">
+          <span class="store-mark__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8h16l-1.2 11.2A2 2 0 0 1 16.8 21H7.2a2 2 0 0 1-2-1.8Z"/>
+              <path d="M8.5 8V6a3.5 3.5 0 0 1 7 0v2"/>
+            </svg>
+          </span>
           <span>App <b>Store</b></span>
         </a>
         <label class="store-search">
@@ -36,7 +41,9 @@
                  autocomplete="off" spellcheck="false">
         </label>
       </div>
+    </div>
 
+    <div class="store-shell">
       <!-- Store-Startseite und App-Seite werden von store.js gefuellt. -->
       <div id="storeView">
         <p class="store-empty">Der Store wird geladen &hellip;</p>
