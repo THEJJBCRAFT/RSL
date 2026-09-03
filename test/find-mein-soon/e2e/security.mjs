@@ -169,12 +169,28 @@ export default async function run({ browser, errors, base, broker, devices, mqtt
   // deshalb kommt hier keine Gruppe zurueck und der Beitritt laeuft ueber "Trotzdem beitreten".
   await join(skew.page, code, "Skew", true);
   await a.page.waitForFunction(() => document.querySelectorAll(".member-item").length === 2, null, { timeout: 15000 });
+
+  // Erst schreibt A, dann Skew. Das ist kein Beiwerk, sondern noetig: Der Test oben hat den
+  // Gruppendaten-Platz mit Absicht zerstoert, also kennt Skew die laufende Nummer der Gruppe
+  // noch nicht und wuerde mit Nummer 1 schreiben - was die anderen zu Recht verwerfen. Sobald A
+  // einmal geschrieben hat, liegt wieder ein gueltiger Stand bereit, den Skew uebernimmt.
+  await a.page.click("#meetingButton");
+  await a.page.click("#map", { position: { x: 200, y: 160 } });
+  await a.page.waitForSelector("#dialog:not([hidden])");
+  await a.page.fill("#dialogInput", "Startpunkt");
+  await a.page.click("#dialogOk");
+  await skew.page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Startpunkt"), null, { timeout: 15000 });
   await skew.page.click("#meetingButton");
   await skew.page.click("#map", { position: { x: 180, y: 180 } });
   await skew.page.waitForSelector("#dialog:not([hidden])");
   await skew.page.fill("#dialogInput", "Vorgehende Uhr");
   await skew.page.click("#dialogOk");
-  await a.page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Vorgehende Uhr"), null, { timeout: 15000 });
+  try {
+    await a.page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Vorgehende Uhr"), null, { timeout: 15000 });
+    check("Treffpunkt der vorgehenden Uhr kommt bei A an", true);
+  } catch {
+    check(`Treffpunkt der vorgehenden Uhr kommt bei A an (A: "${await a.page.textContent("#meetingLabel")}", S: "${await skew.page.textContent("#meetingLabel")}")`, false);
+  }
   // Diesen Stand mitschneiden: Er darf spaeter nicht ueber die neuere Aenderung von A gelegt werden koennen.
   const oldMeta = (await retained(`${root}/meta`)).get(`${root}/meta`);
   await a.page.click("#meetingButton");
