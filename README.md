@@ -69,7 +69,8 @@ Der APK-Workflow fuehrt Lint, Unit- und Ende-zu-Ende-Tests vor dem Bauen aus; ei
 Die APK wird von GitHub automatisch gebaut und enthaelt die Web-App als Assets. Sie laedt nichts von einer Website nach.
 
 - Download der fertigen APK: `https://github.com/THEJJBCRAFT/RSL/releases/download/find-mein-soon-latest/FindMeinSoon.apk`
-- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben. Beim ersten Start die Standort-Berechtigung erlauben.
+- Installation auf dem Handy: APK oeffnen und "Unbekannte Quellen" bzw. "Aus dieser Quelle installieren" erlauben. Die App erklaert beim ersten Beitritt, wofuer sie den Standort braucht, und fragt danach die Standort- und (ab Android 13) die Benachrichtigungs-Berechtigung ab; nach einem "Nein" gibt es "Erneut versuchen" und "Einstellungen oeffnen".
+- Die App sieht einmal am Tag beim Release `find-mein-soon-latest` nach und zeigt eine neuere APK als Karte mit Download-Link an (Version im Menue).
 - Solange "Standort teilen" an ist, laeuft ein Vordergrund-Dienst mit dauerhafter Benachrichtigung ("Standort wird geteilt"). Der Standort wird damit auch bei ausgeschaltetem Bildschirm oder im Hintergrund weitergeschickt; ueber die Benachrichtigung laesst sich das Teilen stoppen. Einige Hersteller (z. B. Xiaomi, Huawei) beenden Hintergrund-Dienste trotzdem, wenn die App nicht von der Akku-Optimierung ausgenommen ist.
 - Ein "Finde mich!"-Alarm erscheint in der App als Alarm-Benachrichtigung mit Ton und Vibration, auch wenn die App gerade im Hintergrund ist.
 - Einladungslinks (`…/apps/find-mein-soon/#join=CODE`) oeffnen sich in der App, sobald man das ab Android 12 einmalig erlaubt: App-Info -> "Standardmaessig oeffnen" -> "Unterstuetzte Links oeffnen".
