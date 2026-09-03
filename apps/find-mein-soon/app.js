@@ -185,13 +185,14 @@ import { createMap } from "./map.js";
     onStatus: updateNetDot,
     onConnected: () => uploadLocation(true),
     onProtocolHint: () => toast("Jemand in der Gruppe nutzt eine neuere App-Version. Bitte aktualisiere Find Mein Soon."),
-    loadSeen: () => (state.session ? { seen: state.session.seen || {}, metaTs: state.session.metaTs || 0 } : null),
-    persistSeen: data => {
+    // Wiedereinspiel-Schutz: Marken gehoeren zur Gruppe, die Zaehlnummer zum eigenen Geraet. Beides ueberlebt Neustarts.
+    loadSeen: session => (state.session && session.code === state.session.code ? state.session.seen || {} : null),
+    persistSeen: seen => {
       if (!state.session) return;
-      state.session.seen = data.seen;
-      state.session.metaTs = data.metaTs;
+      state.session.seen = seen;
       saveSession();
-    }
+    },
+    nextSeq
   });
 
   // Standort: Berechtigung, GPS-Beobachtung, Herzschlag, Stromsparmodus.
@@ -1734,19 +1735,33 @@ import { createMap } from "./map.js";
     return BROKERS;
   }
 
+  /** Eigene Zaehlnummer fuer den Wiedereinspiel-Schutz: steigt mit jeder gesendeten Nachricht. */
+  function nextSeq() {
+    if (!state.session) return 0;
+    state.session.seq = (Number(state.session.seq) || 0) + 1;
+    saveSession();
+    return state.session.seq;
+  }
+
   async function publishMeta(changes) {
-    if (!net.client) throw new Error("Nicht verbunden.");
+    // Ohne Verbindung wuerde die Aenderung nur lokal stehen und beim naechsten Verbinden vom Stand des Dienstes
+    // ueberschrieben. Deshalb erst senden, dann anzeigen.
+    if (!net.client || !net.connected) throw new Error("Keine Verbindung. Treffpunkt und Gruppenname lassen sich gleich wieder ändern.");
     const meta = {
-      name: net.meta?.name || state.session.groupName || `Gruppe ${state.session.code}`,
+      // Keinen Namen erfinden: Wer beitritt, ohne die Gruppendaten erhalten zu haben, soll die Gruppe nicht umbenennen.
+      name: net.meta?.name || state.session.groupName || null,
       meetingPoint: net.meta?.meetingPoint || null,
       ...changes,
       ts: Date.now(),
-      proto: PROTOCOL_VERSION
+      proto: PROTOCOL_VERSION,
+      by: state.session.memberId,
+      seq: nextSeq()
     };
+    await net.publish(`${net.root}/meta`, meta, META_EXPIRY_S);
     net.meta = meta;
+    net.metaFresh = true;
     rebuildGroup();
     render();
-    await net.publish(`${net.root}/meta`, meta, META_EXPIRY_S);
   }
 
   function setMeetingPoint(lat, lng, label) {

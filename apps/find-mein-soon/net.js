@@ -44,10 +44,9 @@ export function createNet(hooks) {
     generation: 0,
     probing: false,
     lastConnectAt: 0,
-    // Hoechste je akzeptierte Zeitstempel je Mitglied und fuer die Gruppendaten: schuetzt vor dem Wiedereinspielen
-    // alter Nachrichten. Ueberlebt resetNet und wird ueber die Hooks mit der Sitzung gespeichert.
+    // Hoechste je gesehene Zaehlnummer je Absender (Mitglieder und Gruppendaten): schuetzt davor, dass jemand eine
+    // alte, mitgeschnittene Nachricht erneut einspielt. Ueberlebt resetNet und wird mit der Sitzung gespeichert.
     seen: new Map(),
-    metaTs: 0,
     metaFresh: false
   };
   let protoHintShown = false;
@@ -55,8 +54,34 @@ export function createNet(hooks) {
   function persistSeen() {
     if (!hooks.persistSeen) return;
     const cutoff = Date.now() - MEMBER_EXPIRY_S * 1000;
-    for (const [id, ts] of net.seen) if (ts < cutoff) net.seen.delete(id);
-    hooks.persistSeen({ seen: Object.fromEntries(net.seen), metaTs: net.metaTs });
+    // Nach unserer eigenen Uhr aufraeumen, nicht nach der des Absenders.
+    for (const [key, mark] of net.seen) if (!mark || !(mark.at > cutoff)) net.seen.delete(key);
+    hooks.persistSeen(Object.fromEntries(net.seen));
+  }
+
+  /**
+   * Wiedereinspiel-Schutz. Jede Nachricht traegt eine Zaehlnummer, die beim Absender nur steigt: kleinere Nummern
+   * sind Wiederholungen und werden verworfen, gleiche sind die retained Kopie nach einem Wiederverbinden.
+   * Bewusst nicht die Uhrzeit: springt die Uhr eines Handys zurueck, waere es sonst minutenlang stumm.
+   * Nachrichten ohne Zaehlnummer stammen aus einer aelteren App-Version; fuer sie gilt wie frueher nur die
+   * Reihenfolge des Absenders (undefined = kein Schutz moeglich, null = verwerfen).
+   */
+  function replayMark(key, data) {
+    const seq = Number(data.seq);
+    if (!Number.isFinite(seq) || seq <= 0) return undefined;
+    const known = net.seen.get(key);
+    if (known && Number.isFinite(known.seq) && seq < known.seq) return null;
+    return { seq, ts: Number(data.ts || 0), at: Date.now() };
+  }
+
+  function rememberMark(key, mark) {
+    if (!mark) return;
+    net.seen.set(key, mark);
+    persistSeen();
+  }
+
+  function nextSeq() {
+    return hooks.nextSeq ? hooks.nextSeq() : 0;
   }
 
   /**
@@ -112,9 +137,11 @@ export function createNet(hooks) {
     net.meta = null;
     net.metaFresh = false;
     // Gespeicherte Zeitstempel der Sitzung uebernehmen (leer bei einer neuen Gruppe).
-    const stored = hooks.loadSeen ? hooks.loadSeen() : null;
-    net.seen = new Map(Object.entries((stored && stored.seen) || {}).map(([id, ts]) => [id, Number(ts) || 0]));
-    net.metaTs = Number((stored && stored.metaTs) || 0);
+    // Nur die Marken dieser Gruppe uebernehmen (bei einer neuen Gruppe faengt der Schutz von vorne an).
+    const stored = hooks.loadSeen ? hooks.loadSeen(session) : null;
+    net.seen = new Map(Object.entries(stored || {})
+      .filter(([, mark]) => mark && typeof mark === "object" && Number.isFinite(Number(mark.seq)))
+      .map(([key, mark]) => [key, { seq: Number(mark.seq), ts: Number(mark.ts) || 0, at: Number(mark.at) || 0 }]));
     net.brokers = hooks.brokers();
 
     let lastError = null;
@@ -311,6 +338,8 @@ export function createNet(hooks) {
     net.root = null;
     net.members = new Map();
     net.meta = null;
+    net.metaFresh = false;
+    net.seen = new Map(); // Marken liegen in der Sitzung und werden beim Verbinden wieder geladen
     net.brokerIndex = -1;
     net.lastAck = 0;
   }
@@ -347,42 +376,41 @@ export function createNet(hooks) {
     }
 
     if (sub === "meta") {
-      // Nur neuere Gruppendaten gelten: Ein wieder eingespielter alter Treffpunkt wird verworfen.
-      const ts = Number(data.ts || 0);
-      if (ts < net.metaTs) return;
-      net.metaTs = ts;
+      // Gruppendaten: Der Schutz gilt je schreibendem Mitglied. Zwischen verschiedenen Schreibern zaehlt weiter die
+      // Reihenfolge des Dienstes, sonst wuerde die vorgehende Uhr eines Handys die Aenderungen aller anderen verwerfen.
+      const by = /^[a-z0-9]{1,32}$/.test(String(data.by || "")) ? String(data.by) : "?";
+      const mark = replayMark(`meta:${by}`, data);
+      if (mark === null) return;
+      rememberMark(`meta:${by}`, mark);
       net.metaFresh = true;
       net.meta = {
         name: cleanText(data.name, 40) || net.meta?.name || null,
         meetingPoint: sanitizeMeeting(data.meetingPoint),
-        ts
+        ts: Number(data.ts || 0),
+        by,
+        seq: mark ? mark.seq : 0
       };
-      persistSeen();
     } else {
       if (sub === hooks.getSession()?.memberId) return; // eigener Eintrag: der lokale Zustand ist aktueller
       const existing = net.members.get(sub);
-      const floor = net.seen.get(sub) || 0;
+      const mark = replayMark(sub, data);
+      if (mark === null) return;
       if (data.left === true) {
         // Abschiedsnachricht (v2): gilt nur, wenn sie nicht aelter als der bekannte Stand ist.
-        const ts = Number(data.ts || 0);
-        if (ts < floor || (existing && ts < existing.ts)) return;
-        net.seen.set(sub, ts);
-        persistSeen();
+        if (mark === undefined && existing && Number(data.ts || 0) < existing.ts) return;
+        rememberMark(sub, mark);
         if (!existing) return;
         net.members.delete(sub);
         hooks.onChange();
         return;
       }
       const member = sanitizeMember(sub, data);
-      // Aeltere Nachrichten (auch wieder eingespielte) verwerfen; gleich alte sind die retained Kopie nach dem Wiederverbinden.
-      if (member.ts < floor || (existing && member.ts < existing.ts)) return;
+      // Ohne Zaehlnummer (alte App-Version) gilt wie frueher die Reihenfolge des Absenders.
+      if (mark === undefined && existing && member.ts < existing.ts) return;
       // Uhrenversatz nur aus Live-Nachrichten ableiten; retained Nachrichten koennen beliebig alt sein.
       member.skew = packet && !packet.retain && member.ts ? Date.now() - member.ts : (existing ? existing.skew : undefined);
       net.members.set(sub, member);
-      if (member.ts > floor) {
-        net.seen.set(sub, member.ts);
-        persistSeen();
-      }
+      rememberMark(sub, mark);
     }
     hooks.onChange();
   }
@@ -390,7 +418,7 @@ export function createNet(hooks) {
   async function publishSelf() {
     const self = hooks.getSelf();
     if (!net.client || !self) return;
-    await publish(`${net.root}/${self.id}`, { ...self, ts: Date.now() }, MEMBER_EXPIRY_S);
+    await publish(`${net.root}/${self.id}`, { ...self, ts: Date.now(), seq: nextSeq() }, MEMBER_EXPIRY_S);
   }
 
   async function leaveNet() {
@@ -404,7 +432,7 @@ export function createNet(hooks) {
     // v2: verschluesselte Abschiedsnachricht, die nur mit dem Gruppenschluessel entstehen kann. Sie ersetzt den
     // eigenen Eintrag beim Broker und verfaellt von selbst.
     try {
-      await publish(topic, farewell(), TOMBSTONE_EXPIRY_S);
+      await publish(topic, { ...farewell(), seq: nextSeq() }, TOMBSTONE_EXPIRY_S);
       if (net.client.options?.protocolVersion !== 5) {
         // Ohne MQTT 5 gibt es keine Ablaufzeit: den retained Platz zusaetzlich leeren, damit beim Broker nichts liegen bleibt.
         // (Live-Mitglieder haben die Abschiedsnachricht schon; leere Nachrichten werden in v2 ignoriert.)

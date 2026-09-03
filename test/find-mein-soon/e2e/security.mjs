@@ -127,6 +127,23 @@ export default async function run({ browser, errors, base, broker, devices, mqtt
   await b.page.waitForTimeout(1500);
   check("B sieht A trotz fremder leerer Nachricht weiter (v2)", (await members(b.page)) === 2);
 
+  // 7b. Wiedereinspielen: eine alte, mitgeschnittene Nachricht darf die Karte nicht zurueckdrehen
+  const distanceToB = () => a.page.evaluate(id => {
+    const node = document.querySelector(`[data-member="${id}"] .member-distance strong`);
+    return node ? node.textContent : "";
+  }, bSession.memberId);
+  const oldPayload = (await retained(`${root}/${bSession.memberId}`)).get(`${root}/${bSession.memberId}`);
+  const farAway = await distanceToB();
+  await b.ctx.setGeolocation({ latitude: 52.5202, longitude: 13.4044, accuracy: 15 });
+  await a.page.waitForFunction(([id, before]) => {
+    const node = document.querySelector(`[data-member="${id}"] .member-distance strong`);
+    return node && node.textContent !== before;
+  }, [bSession.memberId, farAway], { timeout: 40000 });
+  const nearby = await distanceToB();
+  await rawPublish(`${root}/${bSession.memberId}`, oldPayload);
+  await a.page.waitForTimeout(2000);
+  check(`Alte Position (${farAway}) wird nach dem Umzug (${nearby}) nicht wieder eingespielt`, (await distanceToB()) === nearby);
+
   // 8. Abschiedsnachricht statt leerer Nachricht
   await b.page.click("#menuButton");
   await b.page.click("#menuLeave");
@@ -140,6 +157,45 @@ export default async function run({ browser, errors, base, broker, devices, mqtt
   // MQTT 5: verschluesselte Abschiedsnachricht mit Ablaufzeit bleibt liegen. MQTT 3.1.1 (kein Ablauf): der Platz wird geleert.
   check(`A sieht B nach Verlassen nicht mehr; retained Platz nach Verlassen (MQTT ${mqttVersion}): ${tomb ? tomb.length : 0} Bytes`,
     mqttVersion === 5 ? Boolean(tomb && tomb.length > 12 && tomb.length < 120) : !tomb || tomb.length === 0);
+
+  // 8b. Ein Handy mit vorgehender Uhr darf die Treffpunkt-Aenderungen der anderen nicht verwerfen
+  const skew = await phone("S", 52.5119, 13.4009);
+  await skew.ctx.addInitScript(() => {
+    const realNow = Date.now.bind(Date);
+    Date.now = () => realNow() + 10 * 60 * 1000; // Uhr geht zehn Minuten vor
+  });
+  await withBroker(skew.page);
+  // Der Test oben hat den Gruppendaten-Platz beim Dienst mit einer ungueltigen Nachricht ueberschrieben,
+  // deshalb kommt hier keine Gruppe zurueck und der Beitritt laeuft ueber "Trotzdem beitreten".
+  await join(skew.page, code, "Skew", true);
+  await a.page.waitForFunction(() => document.querySelectorAll(".member-item").length === 2, null, { timeout: 15000 });
+  await skew.page.click("#meetingButton");
+  await skew.page.click("#map", { position: { x: 180, y: 180 } });
+  await skew.page.waitForSelector("#dialog:not([hidden])");
+  await skew.page.fill("#dialogInput", "Vorgehende Uhr");
+  await skew.page.click("#dialogOk");
+  await a.page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Vorgehende Uhr"), null, { timeout: 15000 });
+  await a.page.click("#meetingButton");
+  await a.page.click("#map", { position: { x: 220, y: 150 } });
+  await a.page.waitForSelector("#dialog:not([hidden])");
+  await a.page.fill("#dialogInput", "Korrigiert");
+  await a.page.click("#dialogOk");
+  const seesCorrection = async (page, label) => {
+    try {
+      await page.waitForFunction(() => document.getElementById("meetingLabel").textContent.includes("Korrigiert"), null, { timeout: 15000 });
+      check(label, true);
+    } catch {
+      check(`${label} (steht: ${await page.textContent("#meetingLabel")})`, false);
+    }
+  };
+  await seesCorrection(a.page, "Änderung trotz vorgehender Uhr bei A sichtbar");
+  await seesCorrection(skew.page, "Änderung auch auf dem Handy mit vorgehender Uhr sichtbar");
+  await skew.page.click("#menuButton");
+  await skew.page.click("#menuLeave");
+  await skew.page.waitForSelector("#dialog:not([hidden])");
+  await skew.page.click("#dialogOk");
+  await skew.page.waitForSelector("#setupView:not([hidden])", { timeout: 10000 });
+  await a.page.waitForFunction(() => document.querySelectorAll(".member-item").length === 1, null, { timeout: 15000 });
 
   // 9. Treffpunkt + C dabei, dann "Neue Gruppe mit neuem Code"
   await a.page.click("#meetingButton");
