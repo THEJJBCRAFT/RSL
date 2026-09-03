@@ -32,6 +32,26 @@ CC3 Music:
   - Cover: `uploads/covers/`
   - Datenbank: `data/tracks.json`
 
+## App Store
+
+Beide Handy-Apps stehen auf der Webseite unter `apps/store/` zum Herunterladen: aufgebaut wie ein
+Handy-App-Store (Suche, Empfehlung, App-Seite mit Bildern, Angaben und Installieren-Knopf), in den
+Farben der Seite. Verlinkt ist er in der Hauptnavigation und in der Projekt-Liste auf der Startseite.
+
+Fassung, Groesse, Datum und die Zahl der Downloads holt die Seite live aus den GitHub-Releases
+(`find-mein-soon-latest` und `rsl-latest`), damit dort nichts von Hand nachgepflegt werden muss.
+Klappt das nicht (kein Netz, Limit von GitHub erreicht), stehen an den Stellen Striche - der
+Download-Link bleibt trotzdem gueltig.
+
+Die Bildschirmfotos in `assets/img/store/` sind echte Aufnahmen der beiden Apps, keine Montagen.
+
+Selbst pruefen:
+
+```
+npx playwright install chromium   # einmalig
+npm run test:store                # Suche, App-Seite, Live-Angaben, Verhalten ohne GitHub, Handy-Breite
+```
+
 ## Find Mein Soon (Handy-App)
 
 Find Mein Soon ist eine App zum Finden von Familie und Freunden. Sie laeuft komplett fuer sich: kein Konto, keine Website, kein eigener Server.

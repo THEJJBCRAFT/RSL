@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Store — JARO &amp; DELTA</title>
+  <meta name="description" content="Der App Store von JARO &amp; DELTA: Find Mein Soon und RSL als Android-App zum Herunterladen, mit Screenshots, Version und allen Angaben.">
+  <meta name="theme-color" content="#05070b">
+  <link rel="stylesheet" href="../../assets/css/styles.css">
+  <link rel="stylesheet" href="../../assets/css/enhanced.css">
+  <link rel="stylesheet" href="../../assets/css/store.css">
+</head>
+<body class="redstone-page store-page">
+  <main class="redstone-shell">
+    <nav class="site-nav redstone-nav">
+      <a href="../../index.html#projekte" class="wordmark">JARO &amp; DELTA</a>
+      <div>
+        <a href="../../index.html">Start</a>
+        <a href="../../categories/redstone-labs/index.html">Redstone Labs</a>
+        <a href="../../categories/redstone-labs/library/index.html">RSL Mods &amp; Plugins</a>
+        <a href="../find-mein-soon/index.html">Find Mein Soon Web</a>
+      </div>
+    </nav>
+
+    <div class="store-shell">
+      <div class="store-bar">
+        <a class="store-mark" href="index.html">
+          <img src="../../assets/img/rsl_logo.png" alt="">
+          <span>App <b>Store</b></span>
+        </a>
+        <label class="store-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+          </svg>
+          <input type="search" id="storeSearch" placeholder="Apps durchsuchen" aria-label="Apps durchsuchen"
+                 autocomplete="off" spellcheck="false">
+        </label>
+      </div>
+
+      <!-- Store-Startseite und App-Seite werden von store.js gefuellt. -->
+      <div id="storeView">
+        <p class="store-empty">Der Store wird geladen &hellip;</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="store.js"></script>
+</body>
+</html>

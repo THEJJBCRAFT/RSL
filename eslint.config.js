@@ -36,7 +36,7 @@ module.exports = [
     languageOptions: { ecmaVersion: 2022, sourceType: "script", globals: browserGlobals }
   },
   {
-    files: ["test/find-mein-soon/**/*.mjs", "test/rsl-mobile/**/*.mjs", "tools/update-find-mein-soon-vendor.mjs"],
+    files: ["test/find-mein-soon/**/*.mjs", "test/rsl-mobile/**/*.mjs", "test/store/**/*.mjs", "tools/update-find-mein-soon-vendor.mjs"],
     ...js.configs.recommended,
     languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: { ...nodeGlobals, ...browserGlobals } },
     rules: {

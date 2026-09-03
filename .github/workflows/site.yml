@@ -1,0 +1,48 @@
+name: Webseite pruefen
+
+# Prueft die Webseite: Syntax der Skripte, Lint und den Ende-zu-Ende-Test des App Stores.
+# Laeuft bei Aenderungen an der Seite selbst - die beiden APK-Workflows kuemmern sich um die Apps.
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+    paths:
+      - "apps/store/**"
+      - "assets/**"
+      - "index.html"
+      - "categories/**"
+      - "server.js"
+      - "test/store/**"
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.js"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+jobs:
+  check:
+    name: Syntax, Lint und App Store
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node 22 einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Abhaengigkeiten installieren
+        run: npm ci
+
+      - name: Syntax und Lint
+        run: npm run check
+
+      - name: Browser fuer den Ende-zu-Ende-Test
+        run: npx playwright install --with-deps chromium
+
+      - name: App Store testen
+        run: npm run test:store
