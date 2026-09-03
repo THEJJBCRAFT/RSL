@@ -1,4 +1,5 @@
 import type { View } from "../lib/router";
+import { IS_NATIVE, accountState, setClientId } from "../lib/native";
 
 type Toggle = { key: string; title: string; text: string; on: boolean };
 
@@ -50,8 +51,43 @@ export function settings(): View {
           </div>`;
         }).join("")}
       </div>
+
+      <h3 class="section stagger">Microsoft-Anmeldung</h3>
+      <div class="panel stagger">
+        <div class="setting setting--stack">
+          <div class="setting__txt">
+            <strong>Anwendungs-ID</strong>
+            <span>
+              Die Anwendungs-ID (Client) aus deiner Azure-App-Registrierung. Ohne sie kann sich
+              die App nicht bei Microsoft anmelden. Sie ist kein Geheimnis &ndash; die Anleitung
+              steht im Konto-Bereich.
+            </span>
+          </div>
+          <input class="input" id="clientId" type="text" spellcheck="false" autocapitalize="none"
+                 placeholder="00000000-0000-0000-0000-000000000000" />
+          <span class="setting__note" id="clientIdNote"></span>
+        </div>
+      </div>
     `,
     mount(root) {
+      const clientId = root.querySelector<HTMLInputElement>("#clientId");
+      const note = root.querySelector<HTMLElement>("#clientIdNote");
+      if (clientId && note) {
+        if (!IS_NATIVE) {
+          clientId.disabled = true;
+          note.textContent = "Nur in der App änderbar.";
+        } else {
+          clientId.value = accountState().clientId;
+          note.textContent = clientId.value ? "Gespeichert." : "Noch nicht hinterlegt.";
+          clientId.addEventListener("change", () => {
+            const value = clientId.value.trim();
+            clientId.value = value;
+            setClientId(value);
+            note.textContent = value ? "Gespeichert." : "Noch nicht hinterlegt.";
+          });
+        }
+      }
+
       root.addEventListener("click", (e) => {
         const sw = e.target instanceof Element ? e.target.closest<HTMLElement>(".switch") : null;
         const key = sw?.dataset.key;

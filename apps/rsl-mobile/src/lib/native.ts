@@ -22,6 +22,14 @@ type NativeBridge = {
   canShare(): boolean;
   shareVideo(): void;
   shareText(title: string, text: string): void;
+  /** Stand des Minecraft-Kontos als JSON. */
+  accountState(): string;
+  setClientId(value: string): void;
+  accountSignIn(): void;
+  accountCancel(): void;
+  accountSignOut(): void;
+  openLink(url: string): void;
+  copyText(text: string): void;
 };
 
 declare global {
@@ -31,6 +39,8 @@ declare global {
     rslSaveResult?: (id: string, ok: boolean, message: string) => void;
     /** Die Hülle fragt hier nach, bevor sie die App schließt. */
     rslOnBack?: () => boolean;
+    /** Meldungen der Hülle zum Anmelde-Ablauf. */
+    rslAccountEvent?: (json: string) => void;
   }
 }
 
@@ -196,3 +206,92 @@ export function shareVideo(): void {
     /* Teilen ist eine Zugabe, kein Muss */
   }
 }
+
+/* ------------------------------ Minecraft-Konto ------------------------------ */
+
+export type AccountState = {
+  /** Ist die Microsoft-Anwendungs-ID hinterlegt? Ohne sie geht gar nichts. */
+  configured: boolean;
+  clientId: string;
+  signedIn: boolean;
+  owns: boolean;
+  /** Konto besitzt Minecraft, hat aber noch keinen Spielernamen festgelegt. */
+  profileMissing: boolean;
+  name: string;
+  uuid: string;
+  skinUrl: string;
+  since: number;
+};
+
+export type AccountEvent = {
+  stage: "code" | "checking" | "done" | "error" | "idle";
+  userCode?: string;
+  verificationUri?: string;
+  expiresAt?: number;
+  message?: string;
+  account?: AccountState;
+};
+
+const LOGGED_OUT: AccountState = {
+  configured: false,
+  clientId: "",
+  signedIn: false,
+  owns: false,
+  profileMissing: false,
+  name: "",
+  uuid: "",
+  skinUrl: "",
+  since: 0,
+};
+
+export function accountState(): AccountState {
+  if (!bridge) return { ...LOGGED_OUT };
+  try {
+    return { ...LOGGED_OUT, ...(JSON.parse(bridge.accountState()) as Partial<AccountState>) };
+  } catch {
+    return { ...LOGGED_OUT };
+  }
+}
+
+export function setClientId(value: string): void {
+  bridge?.setClientId(value);
+}
+
+export function accountSignIn(): void {
+  bridge?.accountSignIn();
+}
+
+export function accountCancel(): void {
+  bridge?.accountCancel();
+}
+
+export function accountSignOut(): void {
+  bridge?.accountSignOut();
+}
+
+/** Öffnet eine Adresse im Browser des Handys. */
+export function openLink(url: string): void {
+  bridge?.openLink(url);
+}
+
+export function copyText(text: string): void {
+  bridge?.copyText(text);
+}
+
+const accountListeners = new Set<(event: AccountEvent) => void>();
+
+/** Hört auf den Anmelde-Ablauf. Der Rückgabewert meldet die Ansicht wieder ab. */
+export function onAccountEvent(listener: (event: AccountEvent) => void): () => void {
+  accountListeners.add(listener);
+  return () => accountListeners.delete(listener);
+}
+
+window.rslAccountEvent = (json) => {
+  let event: AccountEvent;
+  try {
+    event = JSON.parse(json) as AccountEvent;
+  } catch {
+    event = { stage: "error", message: "Antwort nicht lesbar" };
+  }
+  accountListeners.forEach((listener) => listener(event));
+};

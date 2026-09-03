@@ -257,3 +257,65 @@ html[data-boot="done"] .navitem {
     margin-inline: auto;
   }
 }
+
+/* ---------- Konto-Knopf in der Kopfzeile ---------- */
+.acct {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: none;
+  max-width: 46%;
+  min-height: 40px;
+  padding: 5px 12px 5px 6px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 12.5px;
+  transition:
+    border-color var(--t-2) var(--ease-out),
+    background-color var(--t-2) var(--ease-out);
+}
+.acct:active {
+  background: var(--surface-hi);
+  border-color: var(--line-hi);
+}
+.acct__head {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: linear-gradient(135deg, var(--a1-soft), var(--a2-soft));
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+.acct__head svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: var(--a2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Skin-Kopf: aus dem 64x64-Bild wird das Gesicht herausvergroessert. */
+.acct__head[data-skin] {
+  background-size: 800%;
+  background-position: -100% -100%;
+  image-rendering: pixelated;
+}
+.acct__head[data-skin] svg {
+  display: none;
+}
+.acct__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Ausserhalb des Menues (Konto) markiert die Pille kein Feld. */
+.tabbar__pill.is-armed[data-off="true"] {
+  opacity: 0;
+}

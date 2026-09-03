@@ -2,6 +2,9 @@ package de.redstonelabs.rsl;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -65,7 +68,13 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private VideoSaver saver;
+    private AccountStore account;
     private ExecutorService worker;
+    /** Die Anmeldung wartet minutenlang auf den Browser - dafuer ein eigener Faden. */
+    private Thread signIn;
+    private volatile boolean signInCancelled;
+    /** Zuletzt gemeldeter Stand der Anmeldung, um ihn bei Bedarf zu wiederholen. */
+    private volatile JSONObject lastAccountEvent;
     /** Zeitpunkt des letzten Zurueck-Tippens: zweimal kurz hintereinander beendet die App. */
     private long lastBackPress;
 
@@ -75,6 +84,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         webView = findViewById(R.id.webView);
         saver = new VideoSaver(this);
+        account = new AccountStore(this);
         worker = Executors.newSingleThreadExecutor();
         setupWebView();
         if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
@@ -90,6 +100,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        signInCancelled = true;
         if (worker != null) worker.shutdownNow();
         if (saver != null) saver.cancel();
         super.onDestroy();
@@ -193,6 +204,128 @@ public class MainActivity extends Activity {
                 startChooser(send, title);
             });
         }
+
+        /* ------------------------------ Minecraft-Konto ------------------------------ */
+
+        @JavascriptInterface
+        public String accountState() {
+            return account.state().toString();
+        }
+
+        @JavascriptInterface
+        public void setClientId(String value) {
+            account.setClientId(value);
+        }
+
+        @JavascriptInterface
+        public void accountSignIn() {
+            startSignIn();
+        }
+
+        @JavascriptInterface
+        public void accountCancel() {
+            signInCancelled = true;
+        }
+
+        @JavascriptInterface
+        public void accountSignOut() {
+            signInCancelled = true;
+            account.clear();
+            accountEvent(idleEvent());
+        }
+
+        @JavascriptInterface
+        public void openLink(String url) {
+            runOnUiThread(() -> handleNavigation(Uri.parse(url == null ? "" : url)));
+        }
+
+        @JavascriptInterface
+        public void copyText(String text) {
+            runOnUiThread(() -> {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard == null) return;
+                clipboard.setPrimaryClip(ClipData.newPlainText("RSL", text == null ? "" : text));
+            });
+        }
+    }
+
+    /* -------------------------------- Anmelde-Ablauf -------------------------------- */
+
+    /**
+     * Holt den Code, zeigt ihn an und wartet, bis der Nutzer im Browser bestaetigt hat.
+     * Jeder Schritt geht als Meldung an die Oberflaeche, damit sie den Stand zeigen kann.
+     */
+    private void startSignIn() {
+        if (signIn != null && signIn.isAlive()) {
+            // Schon unterwegs: den zuletzt gezeigten Stand noch einmal schicken, damit die
+            // Ansicht nach einem Wechsel in einen anderen Bereich nicht leer dasteht.
+            if (lastAccountEvent != null) accountEvent(lastAccountEvent);
+            return;
+        }
+        String clientId = account.clientId();
+        if (clientId.isEmpty()) {
+            accountEvent(errorEvent("Es fehlt die Microsoft-Anwendungs-ID. Sie steht in den Einstellungen."));
+            return;
+        }
+        signInCancelled = false;
+        signIn = new Thread(() -> {
+            MsAuth auth = MsAuth.production(clientId);
+            try {
+                MsAuth.DeviceCode code = auth.start();
+                JSONObject event = new JSONObject();
+                event.put("stage", "code");
+                event.put("userCode", code.userCode);
+                event.put("verificationUri", code.verificationUri);
+                event.put("expiresAt", code.expiresAtMillis);
+                accountEvent(event);
+
+                MsAuth.MsTokens tokens = auth.awaitConfirmation(code, () -> signInCancelled);
+                accountEvent(stageEvent("checking"));
+                MsAuth.Account result = auth.finish(tokens);
+                account.save(result);
+
+                JSONObject done = new JSONObject();
+                done.put("stage", "done");
+                done.put("account", account.state());
+                accountEvent(done);
+            } catch (MsAuth.AuthException error) {
+                accountEvent(errorEvent(error.getMessage()));
+            } catch (org.json.JSONException error) {
+                accountEvent(errorEvent("Antwort nicht lesbar"));
+            }
+        }, "rsl-signin");
+        signIn.start();
+    }
+
+    private JSONObject stageEvent(String stage) {
+        try {
+            return new JSONObject().put("stage", stage);
+        } catch (org.json.JSONException error) {
+            return new JSONObject();
+        }
+    }
+
+    private JSONObject errorEvent(String message) {
+        try {
+            return new JSONObject().put("stage", "error")
+                    .put("message", message == null || message.isEmpty() ? "Unbekannter Fehler" : message);
+        } catch (org.json.JSONException error) {
+            return new JSONObject();
+        }
+    }
+
+    private JSONObject idleEvent() {
+        try {
+            return new JSONObject().put("stage", "idle").put("account", account.state());
+        } catch (org.json.JSONException error) {
+            return new JSONObject();
+        }
+    }
+
+    private void accountEvent(JSONObject event) {
+        lastAccountEvent = event;
+        String call = "window.rslAccountEvent && window.rslAccountEvent(" + JSONObject.quote(event.toString()) + ")";
+        webView.post(() -> webView.evaluateJavascript(call, null));
     }
 
     private void startChooser(Intent intent, String title) {

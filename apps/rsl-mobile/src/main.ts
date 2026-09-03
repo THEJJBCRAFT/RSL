@@ -1,12 +1,13 @@
 import "./styles.css";
 
-import { ROUTES } from "./routes";
+import { NAV_ROUTES, ROUTES } from "./routes";
 import { Router } from "./lib/router";
 import { initNav } from "./lib/nav";
 import { initPointerFx } from "./lib/motion";
 import { startAurora } from "./lib/aurora";
 import { startWorker } from "./ai/worker";
 import { initClickSounds } from "./lib/sound";
+import { accountState, onAccountEvent } from "./lib/native";
 
 const root = document.documentElement;
 
@@ -25,6 +26,31 @@ function q<T extends HTMLElement>(selector: string): T {
   const el = document.querySelector<T>(selector);
   if (!el) throw new Error(`Element fehlt: ${selector}`);
   return el;
+}
+
+/**
+ * Der Knopf oben rechts: zeigt den Spielernamen, sobald ein Konto angemeldet ist,
+ * und führt in den Konto-Bereich.
+ */
+function initAccountButton(router: Router): void {
+  const label = q("#acctLabel");
+  const head = q("#acctHead");
+
+  const show = (): void => {
+    const state = accountState();
+    label.textContent = state.signedIn ? state.name || "Angemeldet" : "Anmelden";
+    if (state.signedIn && state.skinUrl) {
+      head.dataset.skin = "on";
+      head.style.backgroundImage = `url('${state.skinUrl}')`;
+    } else {
+      delete head.dataset.skin;
+      head.style.removeProperty("background-image");
+    }
+  };
+
+  q("#acctBtn").addEventListener("click", () => router.go("konto"));
+  onAccountEvent(show);
+  show();
 }
 
 function boot(): void {
@@ -52,7 +78,8 @@ function boot(): void {
     q("#stage"),
     ROUTES.map((r) => ({ id: r.id, view: r.view })),
   );
-  initNav(q("#nav"), q("#pill"), ROUTES, router);
+  initNav(q("#nav"), q("#pill"), NAV_ROUTES, router);
+  initAccountButton(router);
 
   // Knöpfe der Startseite verdrahten - über Delegation, damit es bei
   // jedem Ansichtswechsel ohne erneutes Binden funktioniert.

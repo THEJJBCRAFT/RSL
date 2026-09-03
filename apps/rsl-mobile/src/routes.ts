@@ -4,6 +4,7 @@ import { server } from "./views/server";
 import { settings } from "./views/settings";
 import { ai } from "./views/ai";
 import { about } from "./views/about";
+import { account } from "./views/account";
 
 export type Route = {
   id: string;
@@ -11,6 +12,8 @@ export type Route = {
   /** Innenleben des Nav-Icons (stroke-basiert, 24x24). */
   icon: string;
   view: () => View;
+  /** Nicht im Menue unten - erreichbar ueber die Kopfzeile. */
+  hidden?: boolean;
 };
 
 export const ROUTES: Route[] = [
@@ -44,4 +47,15 @@ export const ROUTES: Route[] = [
     icon: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6h.01"/>',
     view: about,
   },
+  {
+    // Das Konto haengt oben rechts in der Kopfzeile - unten waere das sechste Feld zu schmal.
+    id: "konto",
+    label: "Konto",
+    icon: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20c1.2-3.4 4-5 7.5-5s6.3 1.6 7.5 5"/>',
+    view: account,
+    hidden: true,
+  },
 ];
+
+/** Die Ziele, die unten im Menue stehen. */
+export const NAV_ROUTES: Route[] = ROUTES.filter((route) => !route.hidden);

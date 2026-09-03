@@ -1,9 +1,9 @@
 /**
- * Prueft die Protokoll-Teile der Android-Huelle auf dem Rechner.
+ * Prueft die Protokoll- und Anmelde-Teile der Android-Huelle auf dem Rechner.
  *
- * Android laesst sich hier nicht starten, aber Minecraft-Ping und SRV-Nachschlag sind reines
- * Java. Darum werden genau diese beiden Dateien mit kleinen Ersatzteilen fuer die
- * Android-Klassen uebersetzt und gegen einen nachgebauten Server laufen gelassen.
+ * Android laesst sich hier nicht starten, aber Minecraft-Ping, SRV-Nachschlag und die Anmeldung
+ * mit dem Microsoft-Konto sind reines Java. Darum werden genau diese Dateien mit kleinen
+ * Ersatzteilen fuer die Android-Klassen uebersetzt und gegen nachgebaute Dienste laufen gelassen.
  */
 import { spawnSync } from "node:child_process";
 import { mkdirSync, existsSync, rmSync, writeFileSync } from "node:fs";
@@ -44,7 +44,9 @@ const sources = [
   join(here, "java", "shim", "android", "os", "Build.java"),
   join(repo, "android", "rsl", "app", "src", "main", "java", "de", "redstonelabs", "rsl", "Dns.java"),
   join(repo, "android", "rsl", "app", "src", "main", "java", "de", "redstonelabs", "rsl", "McPing.java"),
+  join(repo, "android", "rsl", "app", "src", "main", "java", "de", "redstonelabs", "rsl", "MsAuth.java"),
   join(here, "java", "de", "redstonelabs", "rsl", "McPingTest.java"),
+  join(here, "java", "de", "redstonelabs", "rsl", "MsAuthTest.java"),
 ];
 
 const compiled = run("javac", ["-nowarn", "-encoding", "UTF-8", "-cp", jsonJar, "-d", classes, ...sources]);
@@ -54,4 +56,8 @@ if (compiled !== 0) {
 }
 
 const separator = process.platform === "win32" ? ";" : ":";
-process.exit(run("java", ["-cp", [classes, jsonJar].join(separator), "de.redstonelabs.rsl.McPingTest"]));
+const classpath = [classes, jsonJar].join(separator);
+for (const test of ["de.redstonelabs.rsl.McPingTest", "de.redstonelabs.rsl.MsAuthTest"]) {
+  const status = run("java", ["-cp", classpath, test]);
+  if (status !== 0) process.exit(status);
+}

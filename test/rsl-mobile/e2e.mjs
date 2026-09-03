@@ -84,6 +84,44 @@ const FAKE_BRIDGE = `
     canShare: () => window.__rsl.saved !== null,
     shareVideo: () => { window.__rsl.shared = true; },
     shareText: () => {},
+
+    accountState: () => JSON.stringify(state()),
+    setClientId: (value) => { account.clientId = value; },
+    accountSignIn: () => {
+      account.signInCalls++;
+      setTimeout(() => window.rslAccountEvent(JSON.stringify({
+        stage: "code",
+        userCode: "WXYZ-1234",
+        verificationUri: "https://example.invalid/link",
+        expiresAt: Date.now() + 900000,
+      })), 20);
+    },
+    accountCancel: () => { account.cancelled++; },
+    accountSignOut: () => {
+      Object.assign(account, { signedIn: false, owns: false, profileMissing: false, name: "", uuid: "", skinUrl: "" });
+      window.rslAccountEvent(JSON.stringify({ stage: "idle", account: state() }));
+    },
+    openLink: (url) => { account.opened = url; },
+    copyText: (text) => { account.copied = text; },
+  };
+
+  // Der Stand des Kontos, wie ihn die echte Huelle herausgibt.
+  const account = {
+    clientId: "", signedIn: false, owns: false, profileMissing: false,
+    name: "", uuid: "", skinUrl: "", since: 0,
+    signInCalls: 0, cancelled: 0, opened: "", copied: "",
+  };
+  window.__acct = account;
+  function state() {
+    return { ...account, configured: account.clientId !== "" };
+  }
+  // Damit der Test eine fertige Anmeldung nachstellen kann.
+  window.__acctFinish = (patch) => {
+    Object.assign(account, { signedIn: true }, patch);
+    window.rslAccountEvent(JSON.stringify({ stage: "done", account: state() }));
+  };
+  window.__acctFail = (message) => {
+    window.rslAccountEvent(JSON.stringify({ stage: "error", message }));
   };
 `;
 
@@ -188,6 +226,77 @@ check("Rueckmeldung der Huelle steht im Bild", "In Filme/RSL gespeichert", await
 check("Teilen erscheint nach dem Speichern", true, await page.locator("#shareVideo").isVisible());
 await page.click("#shareVideo");
 check("Teilen geht an die Huelle", true, await page.evaluate(() => window.__rsl.shared));
+
+/* --------------------------------- Konto --------------------------------- */
+
+check("Kopfzeile zeigt die Anmeldung", "Anmelden", await page.textContent("#acctLabel"));
+await page.click("#acctBtn");
+await page.waitForTimeout(700);
+check("Konto-Bereich ist offen", "konto", await page.evaluate(() => document.querySelector(".view").dataset.view));
+check("kein Menuefeld markiert", 0, await page.locator(".navitem[aria-current]").count());
+check("Pille ist ausgeblendet", "true", await page.getAttribute("#pill", "data-off"));
+
+// Ohne Anwendungs-ID gibt es statt eines Anmelde-Knopfs die Anleitung.
+check("Anleitung statt Anmelde-Knopf", 0, await page.locator('[data-do="signin"]').count());
+check("Schritte werden erklaert", 4, await page.locator(".steps li").count());
+await page.click('[data-do="azure"]');
+check("Azure-Portal wird geoeffnet", true, (await page.evaluate(() => window.__acct.opened)).includes("portal.azure.com"));
+
+// Anwendungs-ID in den Einstellungen hinterlegen.
+await page.click('.navitem[data-route="einstellungen"]');
+await page.waitForTimeout(700);
+await page.fill("#clientId", "  11111111-2222-3333-4444-555555555555  ");
+await page.dispatchEvent("#clientId", "change");
+check("ID kommt bei der Huelle an", "11111111-2222-3333-4444-555555555555", await page.evaluate(() => window.__acct.clientId));
+check("Feld raeumt Leerzeichen weg", "11111111-2222-3333-4444-555555555555", await page.inputValue("#clientId"));
+check("Rueckmeldung im Feld", "Gespeichert.", await page.textContent("#clientIdNote"));
+
+// Jetzt zeigt der Konto-Bereich den Anmelde-Knopf.
+await page.click("#acctBtn");
+await page.waitForTimeout(700);
+check("Anmelde-Knopf ist da", 1, await page.locator('[data-do="signin"]').count());
+await page.click('[data-do="signin"]');
+await page.waitForSelector("#acctCode", { timeout: 5000 });
+check("Code wird angezeigt", "WXYZ-1234", await page.textContent("#acctCode"));
+await page.click('[data-do="copy"]');
+check("Code wird kopiert", "WXYZ-1234", await page.evaluate(() => window.__acct.copied));
+await page.click('[data-do="open"]');
+check("Anmelde-Seite wird geoeffnet", "https://example.invalid/link", await page.evaluate(() => window.__acct.opened));
+check("Restzeit laeuft mit", true, /^Code noch 1[45]:\d\d g/.test(await page.textContent("#acctLeft")));
+
+// Konto mit Minecraft.
+// Der Skin als eingebettetes Bild: der Test soll nichts aus dem Netz holen.
+const SKIN = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+await page.evaluate((skin) => window.__acctFinish({
+  owns: true, name: "Steve", uuid: "0123456789abcdef0123456789abcdef", skinUrl: skin,
+}), SKIN);
+await page.waitForTimeout(300);
+check("Spielername steht da", "Steve", await page.textContent("#acctWho"));
+check("UUID mit Bindestrichen", "01234567-89ab-cdef-0123-456789abcdef", await page.textContent("#acctUuid"));
+check("Besitz wird bestaetigt", true, (await page.textContent("#acctVerdict")).includes("besitzt Minecraft"));
+check("Kopfzeile zeigt den Namen", "Steve", await page.textContent("#acctLabel"));
+check("Kopfzeile zeigt den Skin", "on", await page.getAttribute("#acctHead", "data-skin"));
+
+// Konto mit Minecraft, aber ohne festgelegten Namen.
+await page.evaluate(() => window.__acctFinish({ owns: true, profileMissing: true, name: "", uuid: "", skinUrl: "" }));
+await page.waitForTimeout(300);
+check("fehlender Spielername wird erklaert", true, (await page.textContent("#acctVerdict")).includes("keinen"));
+
+// Konto ohne Minecraft.
+await page.evaluate(() => window.__acctFinish({ owns: false, profileMissing: false }));
+await page.waitForTimeout(300);
+check("fehlendes Minecraft wird gemeldet", true, (await page.textContent("#acctVerdict")).includes("kein Minecraft"));
+
+// Fehler aus der Huelle.
+await page.evaluate(() => window.__acctFail("Zu diesem Konto gehoert kein Xbox-Profil."));
+await page.waitForTimeout(300);
+check("Fehler der Huelle steht im Bild", "Zu diesem Konto gehoert kein Xbox-Profil.", await page.textContent("#acctError"));
+
+// Abmelden.
+await page.click('[data-do="signout"]');
+await page.waitForTimeout(300);
+check("nach dem Abmelden wieder der Anmelde-Knopf", 1, await page.locator('[data-do="signin"]').count());
+check("Kopfzeile wieder neutral", "Anmelden", await page.textContent("#acctLabel"));
 
 /* ------------------------------ Zurueck-Taste ------------------------------ */
 

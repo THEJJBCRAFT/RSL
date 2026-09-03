@@ -26,7 +26,12 @@ export function initNav(navRoot: HTMLElement, pill: HTMLElement, routes: Route[]
 
   const movePill = (id: string): void => {
     const item = items.find((n) => n.dataset.route === id);
-    if (!item) return;
+    // Bereiche ausserhalb des Menues (z. B. das Konto) markieren kein Feld.
+    pill.dataset.off = item ? "" : "true";
+    if (!item) {
+      items.forEach((n) => n.removeAttribute("aria-current"));
+      return;
+    }
     pill.style.setProperty("--pill-w", `${item.offsetWidth}px`);
     pill.style.setProperty("--pill-x", `${item.offsetLeft}px`);
     items.forEach((n) => {

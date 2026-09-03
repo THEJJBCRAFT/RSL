@@ -128,6 +128,7 @@ Dabei sind:
 - **Server**: Live-Status der Minecraft-Server direkt ueber das Server-List-Ping-Protokoll, inklusive
   SRV-Aufloesung (`_minecraft._tcp.<host>`). Kein fremder Status-Dienst. Der Ping braucht eine rohe
   TCP-Verbindung, die ein Browser nicht oeffnen darf - darum macht ihn die Android-Huelle in Java.
+- **Konto**: Anmeldung mit dem Microsoft-Konto und Pruefung, ob es Minecraft besitzt (Details unten).
 - **Einstellungen** (Animationen, Hintergrundlicht, Klickgeraeusche) und **Info**.
 
 Nicht dabei: die Launcher-Installationen (die richten Windows-Programme ein) und die AFK-Wache
@@ -137,7 +138,7 @@ Rechner oder Server nachgereicht werden.
 Ordner:
 
 - `apps/rsl-mobile/` - die Oberflaeche (TypeScript + Vite, ohne Framework)
-- `android/rsl/` - die Android-Huelle (WebView, Minecraft-Ping, Video speichern und teilen)
+- `android/rsl/` - die Android-Huelle (WebView, Minecraft-Ping, Video speichern und teilen, Konto-Anmeldung)
 - `test/rsl-mobile/` - die Tests
 
 Selbst pruefen und bauen (Node 22, JDK 17):
@@ -145,12 +146,49 @@ Selbst pruefen und bauen (Node 22, JDK 17):
 ```
 npm --prefix apps/rsl-mobile ci
 npm --prefix apps/rsl-mobile run build   # tsc --noEmit und vite build
-node test/rsl-mobile/run-java.mjs        # Minecraft-Ping und SRV gegen einen nachgebauten Server
+node test/rsl-mobile/run-java.mjs        # Minecraft-Ping, SRV und Microsoft-Anmeldung gegen nachgebaute Dienste
 npx playwright install chromium          # einmalig
 node test/rsl-mobile/e2e.mjs             # Handy-Groesse, nachgebaute Huelle, echtes Video erzeugen und speichern
 ```
 
 Kurz: `npm run test:rsl-mobile` laeuft beides nacheinander.
+
+### Minecraft-Konto anmelden
+
+Der Knopf oben rechts in der Kopfzeile fuehrt zum Konto-Bereich. Dort meldet man sich mit dem
+Microsoft-Konto an; danach steht fest, ob das Konto Minecraft (Java Edition) besitzt, und die App
+zeigt Spielername, UUID und Skin.
+
+**Es gibt bewusst kein Feld fuer Benutzername und Passwort.** Die alten Mojang-Konten sind
+abgeschafft, und Microsoft laesst eine Passwort-Anmeldung durch fremde Programme gar nicht zu.
+Stattdessen laeuft es wie bei jedem Launcher ueber den Geraete-Code:
+
+1. Die App zeigt einen kurzen Code (z. B. `WXYZ-1234`).
+2. Man oeffnet die Microsoft-Seite und gibt den Code ein. Passwort und Zwei-Faktor bleiben
+   komplett bei Microsoft - die App sieht davon nichts.
+3. Die App fragt so lange nach, bis die Anmeldung bestaetigt ist, und geht dann weiter ueber
+   Xbox Live (XBL, dann XSTS) zu Minecraft.
+4. Zum Schluss wird der Konto-Bestand (`entitlements/mcstore`) und das Spielerprofil abgefragt.
+
+Der Erneuerungs-Schluessel von Microsoft ist so gut wie ein Dauer-Zugang zum Konto. Er wird darum
+mit einem Schluessel aus dem Android-Schluesselspeicher verschluesselt abgelegt, der das Geraet
+nicht verlassen kann und beim Deinstallieren mit verschwindet. Laesst er sich nicht sicher ablegen,
+wird er gar nicht erst gespeichert - dann meldet man sich beim naechsten Start eben neu an.
+
+**Einmal einzurichten: die Microsoft-Anwendungs-ID.** Microsoft laesst nur angemeldete Anwendungen
+an die Xbox-Anmeldung. Die Registrierung ist kostenlos:
+
+1. Im [Azure-Portal](https://portal.azure.com) auf *App-Registrierungen* -> *Neue Registrierung*.
+2. Kontotyp: *Nur persoenliche Microsoft-Konten*. Keine Weiterleitungs-Adresse eintragen.
+3. Unter *Authentifizierung* die Option *Oeffentliche Clientflows zulassen* auf *Ja* stellen.
+4. Die *Anwendungs-ID (Client)* kopieren und in der App unter *Einstellungen -> Microsoft-Anmeldung*
+   einfuegen.
+
+Die Anwendungs-ID ist kein Geheimnis - sie steht bei diesem Anmelde-Weg absichtlich in der App.
+Ohne sie zeigt der Konto-Bereich statt des Anmelde-Knopfs die Anleitung.
+
+Die AFK-Wache soll spaeter auf dieser Anmeldung aufsetzen; bis dahin ist der Konto-Bereich fuer
+sich nutzbar.
 
 ### Android-App (APK)
 

@@ -393,3 +393,151 @@ select.input option {
   font-size: 12.5px;
   color: var(--text-mute);
 }
+
+/* ---------- Konto ---------- */
+.acctcard {
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.acctcard__hint {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+.acctcard__sub {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+
+/* Der Code, den der Nutzer bei Microsoft eingibt: gross und gut abzulesen. */
+.code {
+  margin: 4px 0 2px;
+  padding: 16px 12px;
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, var(--a1-soft), var(--a2-soft));
+  border: 1px solid var(--line-hi);
+  text-align: center;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+.steps li {
+  margin-bottom: 8px;
+}
+.steps strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.skin {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background-color: var(--bg-soft);
+  background-size: 800%;
+  background-position: -100% -100%;
+  image-rendering: pixelated;
+}
+.skin--none {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--a1-soft), var(--a2-soft));
+  color: var(--text-mute);
+  font-size: 22px;
+}
+.who__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.who__txt strong {
+  font-size: 17px;
+}
+.who__txt span {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.verdict {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.verdict--ok {
+  color: var(--a2);
+  border-color: rgba(46, 230, 214, 0.35);
+  background: var(--a2-soft);
+}
+.verdict--warn {
+  color: #ffcf70;
+  border-color: rgba(255, 207, 112, 0.32);
+  background: rgba(255, 207, 112, 0.1);
+}
+.verdict--bad {
+  color: #ff8fae;
+  border-color: rgba(255, 95, 158, 0.32);
+  background: rgba(255, 95, 158, 0.1);
+}
+
+.acctnote {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.016);
+}
+.acctnote h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.acctnote p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+/* Einstellung mit einem Eingabefeld darunter statt einem Schalter daneben. */
+.setting--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.setting--stack .input {
+  width: 100%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+}
+.setting__note {
+  font-size: 11.5px;
+  color: var(--text-mute);
+}
