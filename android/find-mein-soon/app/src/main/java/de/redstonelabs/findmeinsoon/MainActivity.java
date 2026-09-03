@@ -39,6 +39,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import org.json.JSONObject;
+
 /**
  * Native Huelle um die Find Mein Soon Web-App.
  *
@@ -55,6 +57,7 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     private static final String APP_URL = "https://" + APP_HOST + "/index.html";
     private static final String ASSET_ROOT = "find-mein-soon/";
     private static final String CHANNEL_ALARM = "alarm";
+    private static final String CHANNEL_ALARM_QUIET = "alarm_quiet";
     private static final int REQUEST_LOCATION = 1001;
     private static final int REQUEST_NOTIFICATIONS = 1002;
     private static final int ALARM_NOTIFICATION_ID = 100;
@@ -82,6 +85,7 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     private String pendingGeoOrigin;
     private GeolocationPermissions.Callback pendingGeoCallback;
     private boolean sharingWanted;
+    private boolean resumed;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +94,8 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         webView = findViewById(R.id.webView);
         setupWebView();
         ShareService.setSink(this);
+        // Eine Alarm-Benachrichtigung aus einem frueheren Lauf haengt sonst fest; die Web-App setzt sie bei Bedarf neu.
+        clearAlarmNotification();
 
         // Standort-Entscheidungen nicht in der WebView speichern: die Android-Berechtigung
         // wird bei jedem Start neu geprueft (siehe onGeolocationPermissionsShowPrompt).
@@ -104,7 +110,27 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
         setIntent(intent);
-        if (joinCode(intent) != null) loadApp(intent);
+        String code = joinCode(intent);
+        if (code == null) return;
+        String current = webView == null ? null : webView.getUrl();
+        if (current != null && current.startsWith(APP_URL)) {
+            // Die App laeuft schon: ein Fragment-Link wuerde die Seite nicht neu laden, deshalb den Code direkt uebergeben.
+            webView.evaluateJavascript("window.fmsJoin && window.fmsJoin(" + JSONObject.quote(code) + ")", null);
+        } else {
+            loadApp(intent);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        resumed = true;
+    }
+
+    @Override
+    protected void onPause() {
+        resumed = false;
+        super.onPause();
     }
 
     @Override
@@ -154,7 +180,8 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
                 pendingGeoCallback = null;
                 pendingGeoOrigin = null;
             }
-            if (granted && sharingWanted) startSharingService();
+            // Ueber setSharing, damit danach auch die Benachrichtigungs-Berechtigung (Android 13+) abgefragt wird.
+            if (granted && sharingWanted) setSharing(true);
             if (!granted) Toast.makeText(this, R.string.location_denied, Toast.LENGTH_LONG).show();
             if (webView != null) webView.evaluateJavascript("window.fmsPermission && window.fmsPermission(" + granted + ")", null);
         } else if (requestCode == REQUEST_NOTIFICATIONS) {
@@ -167,7 +194,7 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     private void setSharing(boolean on) {
         sharingWanted = on;
         if (!on) {
-            ShareService.stop(this);
+            if (ShareService.isRunning()) ShareService.stop(this);
             return;
         }
         if (!hasLocationPermission()) {
@@ -227,6 +254,12 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
                     new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build());
             channel.setBypassDnd(true);
             manager.createNotificationChannel(channel);
+            // Leiser Kanal, wenn die App gerade sichtbar ist: dann spielt die Web-App selbst die Sirene.
+            NotificationChannel quiet = new NotificationChannel(CHANNEL_ALARM_QUIET, getString(R.string.channel_alarm_quiet), NotificationManager.IMPORTANCE_DEFAULT);
+            quiet.setDescription(getString(R.string.channel_alarm_quiet_description));
+            quiet.setSound(null, null);
+            quiet.enableVibration(false);
+            manager.createNotificationChannel(quiet);
         }
 
         Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -235,8 +268,8 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         String text = message == null || message.isEmpty() ? getString(R.string.alarm_text_default) : message;
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? new Notification.Builder(this, CHANNEL_ALARM)
-                : legacyAlarmBuilder();
+                ? new Notification.Builder(this, resumed ? CHANNEL_ALARM_QUIET : CHANNEL_ALARM)
+                : legacyAlarmBuilder(resumed);
         builder.setSmallIcon(R.drawable.ic_stat_pin)
                 .setContentTitle(title)
                 .setContentText(text)
@@ -244,8 +277,10 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
                 .setContentIntent(openIntent)
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setAutoCancel(false)
-                .setOngoing(true);
+                // Aktualisierungen (neue Nachricht, neuer Ort) ohne erneuten Alarmton; wegwischen ist erlaubt.
+                .setOnlyAlertOnce(true)
+                .setAutoCancel(true)
+                .setOngoing(false);
         if (Double.isFinite(lat) && Double.isFinite(lng) && (lat != 0 || lng != 0)) {
             Uri route = Uri.parse(String.format(Locale.ROOT, "https://www.google.com/maps/dir/?api=1&destination=%f,%f&travelmode=walking", lat, lng));
             PendingIntent routeIntent = PendingIntent.getActivity(this, 4, new Intent(Intent.ACTION_VIEW, route), ShareService.pendingFlags());
@@ -255,10 +290,10 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
     }
 
     @SuppressWarnings("deprecation")
-    private Notification.Builder legacyAlarmBuilder() {
-        return new Notification.Builder(this)
-                .setPriority(Notification.PRIORITY_MAX)
-                .setDefaults(Notification.DEFAULT_ALL);
+    private Notification.Builder legacyAlarmBuilder(boolean quiet) {
+        Notification.Builder builder = new Notification.Builder(this).setPriority(Notification.PRIORITY_MAX);
+        if (!quiet) builder.setDefaults(Notification.DEFAULT_ALL);
+        return builder;
     }
 
     private void clearAlarmNotification() {
@@ -278,6 +313,17 @@ public class MainActivity extends Activity implements ShareService.PositionSink 
         @JavascriptInterface
         public void showAlert(String memberId, String name, String message, double lat, double lng) {
             runOnUiThread(() -> showAlarmNotification(memberId, name, message, lat, lng));
+        }
+
+        /** Benachrichtigungs-Berechtigung (Android 13+) frueh abfragen, damit Alarme nicht stumm verworfen werden. */
+        @JavascriptInterface
+        public void requestNotifications() {
+            runOnUiThread(() -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                        && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[] { Manifest.permission.POST_NOTIFICATIONS }, REQUEST_NOTIFICATIONS);
+                }
+            });
         }
 
         @JavascriptInterface

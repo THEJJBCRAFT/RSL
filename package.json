@@ -9,7 +9,20 @@
   },
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js && node --check apps/find-mein-soon/app.js && node --check apps/find-mein-soon/sw.js",
-    "icons:find-mein-soon": "node tools/make-find-mein-soon-icons.js"
+    "check": "node --check server.js && node --check assets/js/app.js && node --check categories/cc3-music/music.js && node --check tools/minecraft-command-stacker/app.js && npm run lint",
+    "lint": "eslint apps/find-mein-soon test/find-mein-soon tools/update-find-mein-soon-vendor.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test test/find-mein-soon/*.test.mjs",
+    "test:e2e": "node test/find-mein-soon/e2e/run.mjs",
+    "icons:find-mein-soon": "node tools/make-find-mein-soon-icons.js",
+    "vendor:find-mein-soon": "node tools/update-find-mein-soon-vendor.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "aedes": "^1.1.2",
+    "aedes-server-factory": "^0.2.1",
+    "eslint": "^10.1.0",
+    "mqtt": "^5.15.2",
+    "playwright": "1.56.1"
   }
 }

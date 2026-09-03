@@ -48,7 +48,21 @@ Hinweise:
 - Die Karte kommt von OpenStreetMap, die App-Oberflaeche wird offline aus dem Cache geladen.
 - Oeffentliche Broker sind fuer private Nutzung gedacht und ohne Garantie. Wenn einer ausfaellt, wechseln alle Mitglieder automatisch zum naechsten aus der Liste.
 - Icons neu erzeugen: `npm run icons:find-mein-soon`
-- Leaflet 1.9.4 und MQTT.js 5.15 liegen lokal unter `apps/find-mein-soon/vendor/` (BSD- bzw. MIT-Lizenz).
+- Leaflet 1.9.4, MQTT.js 5.15.2 und qrcode-generator 1.4.4 liegen lokal unter `apps/find-mein-soon/vendor/` (BSD- bzw. MIT-Lizenz); aktualisieren mit `npm run vendor:find-mein-soon` (Versionen im Script `tools/update-find-mein-soon-vendor.mjs`).
+
+Aufbau der Web-App (ES-Module, keine Build-Kette): `app.js` (Oberflaeche und Ablauf), `crypto.js` (Codes, Schluesselableitung, AES-GCM), `protocol.js` (Themen, Ablaufzeiten, Pruefung eingehender Nachrichten), `format.js` (Anzeige-Helfer), `net.js` (MQTT-Verbindung mit Wiederverbinden und Broker-Wechsel), `geo.js` (Standort, Herzschlag, Stromsparmodus), `map.js` (Leaflet-Karte), `sw.js` (Offline-Cache). `version.js` ist die eine Versionsnummer fuer App und Cache: bei jeder Veroeffentlichung der Web-App erhoehen, dann laden alle Geraete die neuen Dateien und bekommen einen "Neu laden"-Hinweis.
+
+Entwicklung und Tests (Node 22):
+
+```
+npm install                       # einmalig, holt Playwright, aedes (lokaler MQTT-Broker) und ESLint
+npm run check                     # Syntax und Lint
+npm run test:unit                 # Verschluesselung, Codes, Nachrichtenformat (feste Pruefvektoren)
+npx playwright install chromium   # einmalig fuer die Ende-zu-Ende-Tests
+npm run test:e2e                  # mehrere "Handys" im Browser gegen einen lokalen Broker; einzeln: node test/find-mein-soon/e2e/run.mjs security
+```
+
+Der APK-Workflow fuehrt Lint, Unit- und Ende-zu-Ende-Tests vor dem Bauen aus; eine kaputte Web-App landet nicht in der APK.
 
 ### Android-App (APK)
 

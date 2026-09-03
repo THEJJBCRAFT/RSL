@@ -5,6 +5,7 @@ name: Find Mein Soon APK
 # - Bei jedem Push auf main mit Aenderungen am Android-Projekt oder an der Web-App
 # - Manuell ueber "Actions" -> "Find Mein Soon APK" -> "Run workflow"
 #
+# Vorher laufen Syntax-Pruefung, Lint, Unit- und Ende-zu-Ende-Tests der Web-App (Job "test").
 # Die fertige APK liegt danach unter "Releases" (Tag find-mein-soon-latest) und als Artefakt am Workflow-Lauf.
 # Auf anderen Branches als main wird nur das Artefakt erzeugt (ausser bei manuellem Start).
 #
@@ -22,6 +23,10 @@ on:
     paths:
       - "android/find-mein-soon/**"
       - "apps/find-mein-soon/**"
+      - "test/find-mein-soon/**"
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.js"
       - ".github/workflows/find-mein-soon-apk.yml"
   workflow_dispatch:
 
@@ -34,8 +39,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  test:
+    name: Web-App pruefen und testen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node 22 einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Abhaengigkeiten installieren
+        run: npm ci
+
+      - name: Syntax und Lint
+        run: npm run check
+
+      - name: Unit-Tests (Verschluesselung, Protokoll, Codes)
+        run: npm run test:unit
+
+      - name: Browser fuer Ende-zu-Ende-Tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Ende-zu-Ende-Tests (mehrere Handys, lokaler Broker)
+        run: npm run test:e2e
+
   build:
     name: APK bauen
+    needs: test
     runs-on: ubuntu-latest
     env:
       SHARE_URL: ${{ vars.FMS_APP_URL || 'https://thejjbcraft.github.io/RSL/apps/find-mein-soon/' }}

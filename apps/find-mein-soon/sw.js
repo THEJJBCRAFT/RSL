@@ -1,9 +1,18 @@
-const CACHE_NAME = "find-mein-soon-v4";
+// Service Worker von Find Mein Soon: App-Oberflaeche offline aus dem Cache, Karten immer aus dem Netz.
+importScripts("./version.js");
+const CACHE_NAME = `find-mein-soon-${self.FMS_VERSION}`;
 const SHELL = [
   "./",
   "./index.html",
+  "./version.js",
   "./app.css",
   "./app.js",
+  "./crypto.js",
+  "./protocol.js",
+  "./format.js",
+  "./net.js",
+  "./geo.js",
+  "./map.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
@@ -19,7 +28,8 @@ const SHELL = [
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.allSettled(SHELL.map(url => cache.add(url))))
+      // cache: "reload" umgeht den HTTP-Cache, damit nie eine alte Datei in einen neuen Cache wandert.
+      .then(cache => Promise.allSettled(SHELL.map(url => cache.add(new Request(url, { cache: "reload" })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -37,9 +47,8 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  if (url.pathname.startsWith("/api/") || url.hostname.endsWith("tile.openstreetmap.org")) {
-    return;
-  }
+  // Kartenkacheln und fremde Dienste (Broker, GitHub-API) gehen immer direkt ins Netz.
+  if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
@@ -57,11 +66,13 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Eigene Dateien: erst Cache (schnell, offline), dann im Hintergrund frisch holen. cache: "no-cache" prueft beim
+  // Server nach (ETag), damit nach einem Update nicht Minuten lang alte Module aus dem HTTP-Cache kommen.
   event.respondWith(
-    caches.match(request).then(cached => {
-      const network = fetch(request)
+    caches.match(request, { ignoreSearch: true }).then(cached => {
+      const network = fetch(new Request(request, { cache: "no-cache" }))
         .then(response => {
-          if (response.ok && url.origin === self.location.origin) {
+          if (response.ok) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }

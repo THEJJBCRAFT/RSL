@@ -30,6 +30,8 @@ public class ShareService extends Service {
 
     public static final String ACTION_START = "de.redstonelabs.findmeinsoon.START";
     public static final String ACTION_STOP = "de.redstonelabs.findmeinsoon.STOP";
+    /** Nur der "Stopp"-Knopf der Benachrichtigung: meldet das Ende auch der Web-App. */
+    public static final String ACTION_STOP_FROM_NOTIFICATION = "de.redstonelabs.findmeinsoon.STOP_FROM_NOTIFICATION";
     public static final String ACTION_LOW_POWER = "de.redstonelabs.findmeinsoon.LOW_POWER";
     public static final String ACTION_HIGH_ACCURACY = "de.redstonelabs.findmeinsoon.HIGH_ACCURACY";
     public static final String CHANNEL_SHARING = "sharing";
@@ -85,8 +87,9 @@ public class ShareService extends Service {
         else context.startService(intent);
     }
 
+    /** Beendet den Dienst ohne ihn zu starten (stopService darf auch aus dem Hintergrund gerufen werden). */
     public static void stop(Context context) {
-        context.startService(new Intent(context, ShareService.class).setAction(ACTION_STOP));
+        context.stopService(new Intent(context, ShareService.class));
     }
 
     /** Im Stillstand reicht der Netz-Standort mit laengerem Intervall; bei Bewegung wieder GPS. */
@@ -94,7 +97,11 @@ public class ShareService extends Service {
         if (lowPower == on) return;
         lowPower = on;
         if (!running) return;
-        context.startService(new Intent(context, ShareService.class).setAction(on ? ACTION_LOW_POWER : ACTION_HIGH_ACCURACY));
+        try {
+            context.startService(new Intent(context, ShareService.class).setAction(on ? ACTION_LOW_POWER : ACTION_HIGH_ACCURACY));
+        } catch (IllegalStateException error) {
+            // App gerade im Hintergrund ohne laufenden Vordergrund-Dienst: dann bleibt es beim bisherigen Modus.
+        }
     }
 
     @Override
@@ -105,9 +112,13 @@ public class ShareService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? ACTION_START : intent.getAction();
-        if (ACTION_STOP.equals(action)) {
-            PositionSink target = sink;
-            if (target instanceof MainActivity) ((MainActivity) target).onSharingStoppedFromNotification();
+        if (ACTION_STOP.equals(action) || ACTION_STOP_FROM_NOTIFICATION.equals(action)) {
+            if (ACTION_STOP_FROM_NOTIFICATION.equals(action)) {
+                // Nur hier zurueck in die Web-App melden. Ein Stopp aus der Web-App selbst darf nicht wieder
+                // dorthin zurueckspringen, sonst entsteht eine Endlosschleife.
+                PositionSink target = sink;
+                if (target instanceof MainActivity) ((MainActivity) target).onSharingStoppedFromNotification();
+            }
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -155,7 +166,7 @@ public class ShareService extends Service {
 
         Intent open = new Intent(this, MainActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         PendingIntent openIntent = PendingIntent.getActivity(this, 1, open, pendingFlags());
-        Intent stop = new Intent(this, ShareService.class).setAction(ACTION_STOP);
+        Intent stop = new Intent(this, ShareService.class).setAction(ACTION_STOP_FROM_NOTIFICATION);
         PendingIntent stopIntent = PendingIntent.getService(this, 2, stop, pendingFlags());
 
         Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O

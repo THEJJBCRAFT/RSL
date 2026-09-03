@@ -10,6 +10,8 @@
     <string name="sharing_stop">Stopp</string>
     <string name="channel_alarm">Alarm</string>
     <string name="channel_alarm_description">Jemand aus deiner Gruppe ruft „Finde mich!“.</string>
+    <string name="channel_alarm_quiet">Alarm (App geöffnet)</string>
+    <string name="channel_alarm_quiet_description">Alarm-Hinweis ohne Ton, während die App sichtbar ist und selbst die Sirene spielt.</string>
     <string name="alarm_title">%1$s ruft: Finde mich!</string>
     <string name="alarm_text_default">Öffne Find Mein Soon, um die Person auf der Karte zu sehen.</string>
     <string name="alarm_route">Route</string>

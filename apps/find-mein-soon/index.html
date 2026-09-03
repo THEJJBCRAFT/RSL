@@ -57,7 +57,7 @@
 
         <label id="codeField" hidden>
           <span>Gruppencode</span>
-          <input type="text" id="setupCode" maxlength="160" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" class="code-input">
+          <input type="text" id="setupCode" maxlength="400" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABCD-EFGH-JKLM" class="code-input">
         </label>
 
         <div class="hint-card inline-card" id="openInAppCard" hidden>
@@ -168,6 +168,14 @@
           </div>
         </div>
 
+        <div class="notify-card" id="legacyCard" hidden>
+          <strong>Alter Gruppencode</strong>
+          <span>Diese Gruppe nutzt noch einen kurzen Code der ersten Version. Ein neuer 12-stelliger Code schützt deutlich besser.</span>
+          <div>
+            <button type="button" class="ghost-button small" id="legacyRenew">Neuen Code erzeugen</button>
+          </div>
+        </div>
+
         <div class="notify-card" id="geoCard" hidden>
           <strong>Standort freigeben</strong>
           <span id="geoCardText"></span>
@@ -267,9 +275,10 @@
     <div class="toast" id="toast" hidden role="status" aria-live="polite"></div>
   </div>
 
+  <script src="version.js"></script>
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="vendor/mqtt/mqtt.min.js"></script>
   <script src="vendor/qrcode/qrcode.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
