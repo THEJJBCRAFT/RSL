@@ -76,19 +76,22 @@ export function account(): View {
         body.innerHTML = trouble + (state.signedIn ? signedIn(state) : signedOut());
       };
 
-      const refresh = (event: AccountEvent | null = null): void => {
-        const state = event?.account ?? accountState();
-        deadline = event?.stage === "code" ? (event.expiresAt ?? 0) : 0;
-        render(state, event);
-      };
-
-      // Die verbleibende Zeit des Codes läuft sichtbar herunter.
-      tick = window.setInterval(() => {
+      // Die verbleibende Zeit des Codes: sofort hinschreiben, dann jede Sekunde nachziehen.
+      const paintLeft = (): void => {
         const left = root.querySelector<HTMLElement>("#acctLeft");
         if (!left || !deadline) return;
         const seconds = Math.max(0, Math.round((deadline - Date.now()) / 1000));
         left.textContent = `Code noch ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} gültig`;
-      }, 1000);
+      };
+
+      const refresh = (event: AccountEvent | null = null): void => {
+        const state = event?.account ?? accountState();
+        deadline = event?.stage === "code" ? (event.expiresAt ?? 0) : 0;
+        render(state, event);
+        paintLeft();
+      };
+
+      tick = window.setInterval(paintLeft, 1000);
 
       stop = onAccountEvent((event) => refresh(event));
 
@@ -169,7 +172,7 @@ function waiting(event: AccountEvent): string {
   return `
     <p class="acctcard__hint">Öffne die Seite, melde dich an und gib diesen Code ein:</p>
     <div class="code" id="acctCode">${escape(code)}</div>
-    <p class="acctcard__sub"><span id="acctLeft">Code ist einige Minuten gültig</span></p>
+    <p class="acctcard__sub"><span id="acctLeft"></span></p>
     <div class="row">
       <button class="btn btn--primary" data-fx data-do="open" data-url="${escape(uri)}">Seite öffnen</button>
       <button class="btn btn--ghost" data-fx data-do="copy" data-code="${escape(code)}">Code kopieren</button>
