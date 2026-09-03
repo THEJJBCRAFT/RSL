@@ -1,0 +1,566 @@
+/* =====================================================================
+   RSL App Store — Aufbau wie ein Handy-App-Store, Farben wie die Seite.
+   Laedt nach styles.css und enhanced.css und nutzt deren Farbtoken.
+   ===================================================================== */
+
+.store-page {
+  background:
+    radial-gradient(1000px 620px at 15% -10%, rgba(255, 50, 72, .14), transparent 60%),
+    radial-gradient(900px 560px at 88% 4%, rgba(139, 92, 246, .12), transparent 62%),
+    var(--bg);
+}
+
+.store-shell {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 26px 20px 90px;
+}
+
+/* ---------------------------- Kopfleiste ---------------------------- */
+
+/* Ueber die ganze Breite, damit sie beim Scrollen nicht als Band mittendrin steht. */
+.store-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 14px 0 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, .06);
+  background: rgba(5, 7, 11, .82);
+  backdrop-filter: blur(16px);
+}
+.store-bar__inner {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.store-mark {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex: none;
+  font-weight: 850;
+  letter-spacing: .04em;
+}
+.store-mark__icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 11px;
+  border: 1px solid var(--rsl-red-line);
+  background: linear-gradient(140deg, rgba(255, 50, 72, .3), rgba(139, 7, 20, .35));
+  color: #ff7d8e;
+}
+.store-mark__icon svg {
+  width: 20px;
+  height: 20px;
+}
+.store-mark span {
+  font-size: 17px;
+}
+.store-mark b {
+  color: var(--rsl-red);
+}
+
+.store-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-glass);
+  transition: border-color .25s var(--rsl-ease), background-color .25s var(--rsl-ease);
+}
+.store-search:focus-within {
+  border-color: rgba(255, 50, 72, .55);
+  background: rgba(255, 50, 72, .07);
+}
+.store-search svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--muted);
+}
+.store-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.store-search input::placeholder {
+  color: var(--muted);
+}
+
+/* ------------------------------ Chips ------------------------------ */
+
+.store-chips {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0 18px;
+  scrollbar-width: none;
+}
+.store-chips::-webkit-scrollbar {
+  display: none;
+}
+.store-chip {
+  flex: none;
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-glass);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .25s var(--rsl-ease);
+}
+.store-chip:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, .22);
+}
+.store-chip[aria-pressed="true"] {
+  color: #fff;
+  border-color: rgba(255, 50, 72, .55);
+  background: var(--rsl-red-soft);
+}
+
+/* --------------------------- Empfehlung --------------------------- */
+
+.store-feature {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 26px;
+  padding: 30px 32px;
+  margin-bottom: 34px;
+  border-radius: var(--rsl-radius-lg);
+  border: 1px solid var(--rsl-red-line);
+  background:
+    radial-gradient(680px 300px at 8% 120%, rgba(255, 50, 72, .28), transparent 70%),
+    linear-gradient(115deg, rgba(139, 7, 20, .5), rgba(10, 6, 12, .9));
+  box-shadow: var(--rsl-shadow);
+  cursor: pointer;
+}
+.store-feature__kicker {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--rsl-gold);
+}
+.store-feature h2 {
+  margin: 0 0 8px;
+  font-size: clamp(26px, 4.4vw, 38px);
+  line-height: 1.1;
+}
+.store-feature p {
+  margin: 0 0 18px;
+  max-width: 54ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.store-feature__art {
+  width: 128px;
+  height: 128px;
+  flex: none;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  box-shadow: 0 26px 54px -20px rgba(0, 0, 0, .95);
+}
+
+/* ------------------------------ Liste ------------------------------ */
+
+.store-section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  font-size: 21px;
+}
+.store-section-title small {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.store-list {
+  display: grid;
+  gap: 14px;
+}
+
+.store-row {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 18px;
+  border-radius: var(--rsl-radius);
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-panel);
+  cursor: pointer;
+  transition: transform .3s var(--rsl-ease), border-color .3s var(--rsl-ease), background-color .3s var(--rsl-ease);
+}
+.store-row:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 50, 72, .4);
+  background: var(--rsl-panel-2);
+}
+.store-row img {
+  width: 68px;
+  height: 68px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, .12);
+}
+.store-row__main {
+  min-width: 0;
+}
+.store-row__main strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 3px;
+}
+.store-row__main span {
+  display: block;
+  font-size: 13.5px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.store-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 7px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.store-row__meta b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.store-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+}
+
+/* --------------------------- Detailseite --------------------------- */
+
+.store-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  margin-bottom: 20px;
+  padding: 0 16px 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-glass);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+.store-back:hover {
+  color: var(--text);
+  border-color: rgba(255, 255, 255, .24);
+}
+.store-back svg {
+  width: 17px;
+  height: 17px;
+}
+
+.store-head {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 22px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.store-head img {
+  width: 112px;
+  height: 112px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 22px 46px -22px rgba(0, 0, 0, .95);
+}
+.store-head h1 {
+  margin: 0 0 6px;
+  font-size: clamp(28px, 5vw, 40px);
+  line-height: 1.08;
+}
+.store-head .store-dev {
+  color: var(--rsl-red);
+  font-weight: 800;
+  font-size: 15px;
+}
+.store-head .store-sub {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Zahlenreihe, wie sie ein App-Store ueber den Knoepfen zeigt. */
+.store-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 26px;
+  border-radius: var(--rsl-radius);
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-panel);
+  overflow: hidden;
+}
+.store-facts div {
+  padding: 16px 12px;
+  text-align: center;
+  border-right: 1px solid var(--rsl-line);
+}
+.store-facts div:last-child {
+  border-right: 0;
+}
+.store-facts strong {
+  display: block;
+  font-size: 17px;
+  margin-bottom: 3px;
+}
+.store-facts span {
+  font-size: 11.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.store-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.store-cta .btn-download {
+  flex: 1 1 260px;
+  min-height: 54px;
+  font-size: 16px;
+}
+.store-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-glass);
+  color: var(--text);
+  font-weight: 800;
+  cursor: pointer;
+}
+.store-ghost:hover {
+  border-color: var(--rsl-aqua);
+}
+.store-ghost svg {
+  width: 17px;
+  height: 17px;
+}
+
+.store-note {
+  margin: 0 0 34px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* Bilderstreifen, quer scrollbar wie im Store. */
+.store-shots {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  margin-bottom: 34px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+}
+.store-shots img {
+  flex: none;
+  width: 232px;
+  border-radius: 20px;
+  border: 1px solid var(--rsl-line);
+  background: #05070b;
+  scroll-snap-align: start;
+}
+
+.store-block {
+  margin-bottom: 34px;
+}
+.store-block h2 {
+  margin: 0 0 14px;
+  font-size: 21px;
+}
+.store-block p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.75;
+  max-width: 76ch;
+}
+
+.store-points {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.store-points li {
+  padding: 18px 20px;
+  border-radius: var(--rsl-radius);
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-panel);
+}
+.store-points strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 15px;
+}
+.store-points span {
+  font-size: 13.5px;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.store-changes {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.8;
+}
+
+.store-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-radius: var(--rsl-radius);
+  border: 1px solid var(--rsl-line);
+  background: var(--rsl-panel);
+  overflow: hidden;
+}
+.store-info div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--rsl-line);
+}
+.store-info div:nth-child(odd) {
+  border-right: 1px solid var(--rsl-line);
+}
+/* Die letzte Zeile braucht unten keinen Strich mehr. */
+.store-info div:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+.store-info span {
+  color: var(--muted);
+  font-size: 14px;
+}
+.store-info b {
+  font-size: 14px;
+  text-align: right;
+}
+
+/* Der Kasten fuer die Installation aus unbekannter Quelle. */
+.store-howto {
+  padding: 22px 24px;
+  border-radius: var(--rsl-radius);
+  border: 1px solid rgba(255, 209, 102, .3);
+  background: rgba(255, 209, 102, .08);
+}
+.store-howto h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: var(--gold);
+}
+.store-howto ol {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.85;
+}
+
+@media (max-width: 720px) {
+  .store-shell {
+    padding: 20px 14px 70px;
+  }
+  .store-bar__inner {
+    padding: 0 14px;
+  }
+  .store-feature {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 24px 22px;
+  }
+  /* Das Symbol wandert nach oben, sonst haengt es unter dem Knopf. */
+  .store-feature__art {
+    order: -1;
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+  }
+  .store-row {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 14px;
+  }
+  .store-row img {
+    width: 58px;
+    height: 58px;
+    border-radius: 14px;
+  }
+  .store-row .btn-download {
+    grid-column: 1 / -1;
+  }
+  .store-head {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 16px;
+  }
+  .store-head img {
+    width: 84px;
+    height: 84px;
+    border-radius: 20px;
+  }
+  .store-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .store-facts div:nth-child(2) {
+    border-right: 0;
+  }
+  .store-facts div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--rsl-line);
+  }
+  .store-mark span {
+    font-size: 15px;
+  }
+  .store-info {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .store-info div:nth-child(odd) {
+    border-right: 0;
+  }
+  .store-info div:nth-last-child(2) {
+    border-bottom: 1px solid var(--rsl-line);
+  }
+}

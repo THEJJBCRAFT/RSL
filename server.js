@@ -9,9 +9,6 @@ const port = Number(process.env.PORT || 5177);
 const host = process.env.HOST || (process.env.PORT ? "0.0.0.0" : "127.0.0.1");
 const dataDir = path.join(root, "data");
 const tracksFile = path.join(dataDir, "tracks.json");
-const finderFile = path.join(dataDir, "finder.json");
-const finderGroupMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
-const finderColors = ["#4ff4cf", "#ff3248", "#ffd166", "#8b5cf6", "#38bdf8", "#fb923c", "#a3e635", "#f472b6"];
 const musicDir = path.join(root, "uploads", "music");
 const coversDir = path.join(root, "uploads", "covers");
 const sessions = new Map();
@@ -108,11 +105,6 @@ async function handleApi(req, res, url) {
     return;
   }
 
-  if (url.pathname.startsWith("/api/finder/")) {
-    await handleFinderApi(req, res, url);
-    return;
-  }
-
   if (!isAdmin(req)) {
     sendJson(res, 401, { ok: false, error: "Admin-Login benoetigt." });
     return;
@@ -150,240 +142,6 @@ async function handleApi(req, res, url) {
   }
 
   sendJson(res, 404, { ok: false, error: "API nicht gefunden." });
-}
-
-async function handleFinderApi(req, res, url) {
-  if (req.method === "POST" && url.pathname === "/api/finder/groups") {
-    const body = await readJson(req);
-    const memberName = cleanName(body.memberName);
-    if (!memberName) {
-      sendJson(res, 400, { ok: false, error: "Bitte gib deinen Namen ein." });
-      return;
-    }
-    const store = readFinder();
-    const group = {
-      code: newGroupCode(store),
-      name: cleanName(body.groupName) || `${memberName}s Gruppe`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      meetingPoint: null,
-      members: {}
-    };
-    const member = addFinderMember(group, memberName);
-    store.groups[group.code] = group;
-    writeFinder(store);
-    sendJson(res, 201, { ok: true, group: publicFinderGroup(group), member: { id: member.id, token: member.token } });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/finder/join") {
-    const body = await readJson(req);
-    const memberName = cleanName(body.memberName);
-    const code = cleanCode(body.code);
-    if (!memberName) {
-      sendJson(res, 400, { ok: false, error: "Bitte gib deinen Namen ein." });
-      return;
-    }
-    const store = readFinder();
-    const group = store.groups[code];
-    if (!group) {
-      sendJson(res, 404, { ok: false, error: "Gruppe nicht gefunden. Pruefe den Code." });
-      return;
-    }
-    if (Object.keys(group.members).length >= 30) {
-      sendJson(res, 409, { ok: false, error: "Diese Gruppe ist voll." });
-      return;
-    }
-    const member = addFinderMember(group, memberName);
-    touchFinderGroup(group);
-    writeFinder(store);
-    sendJson(res, 200, { ok: true, group: publicFinderGroup(group), member: { id: member.id, token: member.token } });
-    return;
-  }
-
-  const match = url.pathname.match(/^\/api\/finder\/groups\/([A-Z0-9]{6})(?:\/([a-z]+))?$/);
-  if (!match) {
-    sendJson(res, 404, { ok: false, error: "API nicht gefunden." });
-    return;
-  }
-
-  const store = readFinder();
-  const group = store.groups[match[1]];
-  const memberId = String(req.headers["x-finder-member"] || "");
-  const token = String(req.headers["x-finder-token"] || "");
-  const member = group && group.members[memberId];
-  if (!group || !member || !constantEqualText(member.token, token)) {
-    sendJson(res, 401, { ok: false, error: "Du bist nicht mehr in dieser Gruppe." });
-    return;
-  }
-
-  const action = match[2] || "";
-
-  if (req.method === "GET" && !action) {
-    sendJson(res, 200, { ok: true, group: publicFinderGroup(group), serverTime: new Date().toISOString() });
-    return;
-  }
-
-  if (req.method === "POST" && action === "location") {
-    const body = await readJson(req);
-    const lat = toNumber(body.lat);
-    const lng = toNumber(body.lng);
-    member.sharing = body.sharing !== false;
-    if (lat !== null && lng !== null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-      member.lat = lat;
-      member.lng = lng;
-      member.accuracy = toNumber(body.accuracy);
-      member.heading = toNumber(body.heading);
-      member.speed = toNumber(body.speed);
-      member.locatedAt = new Date().toISOString();
-    }
-    const battery = toNumber(body.battery);
-    member.battery = battery === null ? null : Math.max(0, Math.min(100, Math.round(battery)));
-    member.lastSeen = new Date().toISOString();
-    touchFinderGroup(group);
-    writeFinder(store);
-    sendJson(res, 200, { ok: true, group: publicFinderGroup(group), serverTime: new Date().toISOString() });
-    return;
-  }
-
-  if (req.method === "POST" && action === "alert") {
-    const body = await readJson(req);
-    member.alert = body.active
-      ? { active: true, message: cleanText(body.message || "").slice(0, 160), since: member.alert?.active ? member.alert.since : new Date().toISOString() }
-      : null;
-    member.lastSeen = new Date().toISOString();
-    touchFinderGroup(group);
-    writeFinder(store);
-    sendJson(res, 200, { ok: true, group: publicFinderGroup(group) });
-    return;
-  }
-
-  if (req.method === "POST" && action === "meeting") {
-    const body = await readJson(req);
-    if (body.clear) {
-      group.meetingPoint = null;
-    } else {
-      const lat = toNumber(body.lat);
-      const lng = toNumber(body.lng);
-      if (lat === null || lng === null) {
-        sendJson(res, 400, { ok: false, error: "Treffpunkt braucht eine Position." });
-        return;
-      }
-      group.meetingPoint = {
-        lat,
-        lng,
-        label: cleanName(body.label) || "Treffpunkt",
-        setBy: member.name,
-        setAt: new Date().toISOString()
-      };
-    }
-    touchFinderGroup(group);
-    writeFinder(store);
-    sendJson(res, 200, { ok: true, group: publicFinderGroup(group) });
-    return;
-  }
-
-  if (req.method === "POST" && action === "leave") {
-    delete group.members[memberId];
-    if (!Object.keys(group.members).length) delete store.groups[group.code];
-    else touchFinderGroup(group);
-    writeFinder(store);
-    sendJson(res, 200, { ok: true });
-    return;
-  }
-
-  sendJson(res, 404, { ok: false, error: "API nicht gefunden." });
-}
-
-function addFinderMember(group, name) {
-  const used = new Set(Object.values(group.members).map(item => item.color));
-  const color = finderColors.find(item => !used.has(item)) || finderColors[Object.keys(group.members).length % finderColors.length];
-  const member = {
-    id: crypto.randomBytes(8).toString("hex"),
-    token: crypto.randomBytes(24).toString("hex"),
-    name,
-    color,
-    joinedAt: new Date().toISOString(),
-    lastSeen: new Date().toISOString(),
-    locatedAt: null,
-    lat: null,
-    lng: null,
-    accuracy: null,
-    heading: null,
-    speed: null,
-    battery: null,
-    sharing: true,
-    alert: null
-  };
-  group.members[member.id] = member;
-  return member;
-}
-
-function touchFinderGroup(group) {
-  group.updatedAt = new Date().toISOString();
-}
-
-function newGroupCode(store) {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  for (let attempt = 0; attempt < 50; attempt++) {
-    const bytes = crypto.randomBytes(6);
-    const code = Array.from(bytes, byte => alphabet[byte % alphabet.length]).join("");
-    if (!store.groups[code]) return code;
-  }
-  throw new Error("Kein freier Gruppencode gefunden.");
-}
-
-function publicFinderGroup(group) {
-  return {
-    code: group.code,
-    name: group.name,
-    createdAt: group.createdAt,
-    updatedAt: group.updatedAt,
-    meetingPoint: group.meetingPoint,
-    members: Object.values(group.members).map(member => {
-      const { token, ...rest } = member;
-      return rest;
-    })
-  };
-}
-
-function readFinder() {
-  try {
-    const store = JSON.parse(fs.readFileSync(finderFile, "utf8"));
-    if (!store || typeof store !== "object" || !store.groups) return { groups: {} };
-    return store;
-  } catch {
-    return { groups: {} };
-  }
-}
-
-function writeFinder(store) {
-  const cutoff = Date.now() - finderGroupMaxAgeMs;
-  Object.keys(store.groups).forEach(code => {
-    const updated = Date.parse(store.groups[code].updatedAt || 0);
-    if (!Number.isFinite(updated) || updated < cutoff) delete store.groups[code];
-  });
-  fs.writeFileSync(finderFile, JSON.stringify(store, null, 2) + "\n", "utf8");
-}
-
-function cleanName(value) {
-  return cleanText(value).slice(0, 40);
-}
-
-function cleanCode(value) {
-  return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
-}
-
-function toNumber(value) {
-  if (value === null || value === undefined || value === "") return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function constantEqualText(a, b) {
-  const left = Buffer.from(String(a || ""));
-  const right = Buffer.from(String(b || ""));
-  return left.length === right.length && left.length > 0 && crypto.timingSafeEqual(left, right);
 }
 
 function createTrack(parts) {
@@ -823,7 +581,6 @@ function sendJson(res, status, payload) {
 function ensureStorage() {
   [dataDir, musicDir, coversDir].forEach(dir => fs.mkdirSync(dir, { recursive: true }));
   if (!fs.existsSync(tracksFile)) writeTracks([]);
-  if (!fs.existsSync(finderFile)) writeFinder({ groups: {} });
 }
 
 function safeExt(filename, allowed) {

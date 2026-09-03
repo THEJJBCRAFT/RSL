@@ -1,0 +1,543 @@
+/* ---------- Modellzeile ---------- */
+.modelbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: linear-gradient(100deg, var(--a1-soft), transparent 60%);
+}
+
+.modelbar__id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modelbar__id strong {
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.modelbar__api {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-mute);
+  font-family: "Cascadia Code", ui-monospace, Consolas, monospace;
+  user-select: text;
+}
+
+/* ---------- Zweispaltiges Studio ---------- */
+.studio {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 22px;
+  align-items: start;
+}
+
+@media (max-width: 1180px) {
+  .studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+}
+
+.studio__left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.studio__right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- Eingabefelder ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field__lbl {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  user-select: text;
+  cursor: text;
+  transition:
+    border-color var(--t-2) var(--ease-out),
+    background-color var(--t-2) var(--ease-out),
+    box-shadow var(--t-2) var(--ease-out);
+}
+
+.input:hover {
+  border-color: var(--line-hi);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--a1);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 0 0 3px var(--a1-soft);
+}
+
+.input--area {
+  resize: vertical;
+  min-height: 92px;
+  line-height: 1.55;
+}
+
+select.input {
+  cursor: pointer;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-mute) 50%),
+    linear-gradient(135deg, var(--text-mute) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) center,
+    calc(100% - 11px) center;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+
+select.input option {
+  background: #12141f;
+  color: var(--text);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.seedrow {
+  display: flex;
+  gap: 8px;
+}
+
+.seedrow .input {
+  flex: 1;
+}
+
+/* ---------- Vorschlags-Chips ---------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chip {
+  padding: 5px 11px;
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  transition:
+    transform var(--t-2) var(--ease-spring),
+    color var(--t-1) linear,
+    border-color var(--t-1) linear,
+    background-color var(--t-1) linear;
+}
+
+.chip:hover {
+  color: var(--text);
+  border-color: var(--a1);
+  background: var(--a1-soft);
+  transform: translateY(-2px);
+}
+
+.chip:active {
+  transform: translateY(0) scale(0.95);
+}
+
+/* ---------- Sichtfenster ---------- */
+.viewer {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #05060b;
+  box-shadow: var(--sh-3);
+}
+
+.viewer canvas,
+.viewer video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.viewer canvas[hidden],
+.viewer video[hidden] {
+  display: none;
+}
+
+.viewer__badge {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  background: rgba(8, 10, 18, 0.72);
+  border: 1px solid var(--line);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
+.scenetags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+}
+
+/* ---------- Fortschritt ---------- */
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.progress[hidden] {
+  display: none;
+}
+
+.progress__bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.progress__bar span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--a1), var(--a2));
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 200ms linear;
+}
+
+.progress__txt {
+  font-size: 12px;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ---------- Kleinigkeiten ---------- */
+.section {
+  margin: 30px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  font-weight: 600;
+}
+
+.btn--sm {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.btn--icon {
+  width: 40px;
+  padding: 0;
+  flex: none;
+}
+
+.tag--done {
+  color: #6fe0a8;
+  border-color: rgba(111, 224, 168, 0.35);
+  background: rgba(111, 224, 168, 0.1);
+}
+
+.tag--failed {
+  color: #ff8d8d;
+  border-color: rgba(255, 141, 141, 0.35);
+  background: rgba(255, 141, 141, 0.1);
+}
+
+.tag--rendering {
+  color: var(--a2);
+  border-color: rgba(46, 230, 214, 0.35);
+  background: var(--a2-soft);
+}
+
+/* ---------- Server-Karten ---------- */
+.srvlist {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.srv {
+  display: flex;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  transition:
+    border-color var(--t-2) var(--ease-out),
+    background-color var(--t-2) var(--ease-out);
+}
+
+.srv:hover {
+  border-color: var(--line-hi);
+  background: var(--surface-hi);
+}
+
+.srv__icon {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--a1-soft), var(--a2-soft));
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.srv__icon img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.srv__fallback {
+  color: var(--a2);
+  font-size: 20px;
+}
+
+.srv__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.srv__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.srv__title strong {
+  font-size: 15px;
+}
+
+.srv__host {
+  user-select: text;
+}
+
+.srv__motd {
+  margin: 6px 0 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.srv__stats {
+  display: flex;
+  gap: 22px;
+  font-size: 12.5px;
+  color: var(--text-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.srv__stats b {
+  color: var(--text);
+  font-size: 15px;
+}
+
+.srv__note {
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+
+/* ---------- Konto ---------- */
+.acctcard {
+  padding: 20px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.acctcard__hint {
+  margin: 0 0 16px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+.acctcard__sub {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--text-mute);
+}
+
+/* Der Code, den der Nutzer bei Microsoft eingibt: gross und gut abzulesen. */
+.code {
+  margin: 4px 0 2px;
+  padding: 16px 12px;
+  border-radius: var(--r-md);
+  background: linear-gradient(100deg, var(--a1-soft), var(--a2-soft));
+  border: 1px solid var(--line-hi);
+  text-align: center;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}
+.steps li {
+  margin-bottom: 8px;
+}
+.steps strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.skin {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background-color: var(--bg-soft);
+  background-size: 800%;
+  background-position: -100% -100%;
+  image-rendering: pixelated;
+}
+.skin--none {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--a1-soft), var(--a2-soft));
+  color: var(--text-mute);
+  font-size: 22px;
+}
+.who__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.who__txt strong {
+  font-size: 17px;
+}
+.who__txt span {
+  font-size: 11.5px;
+  color: var(--text-mute);
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.verdict {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.5;
+}
+.verdict--ok {
+  color: var(--a2);
+  border-color: rgba(46, 230, 214, 0.35);
+  background: var(--a2-soft);
+}
+.verdict--warn {
+  color: #ffcf70;
+  border-color: rgba(255, 207, 112, 0.32);
+  background: rgba(255, 207, 112, 0.1);
+}
+.verdict--bad {
+  color: #ff8fae;
+  border-color: rgba(255, 95, 158, 0.32);
+  background: rgba(255, 95, 158, 0.1);
+}
+
+.acctnote {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.016);
+}
+.acctnote h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.acctnote p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+/* Einstellung mit einem Eingabefeld darunter statt einem Schalter daneben. */
+.setting--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.setting--stack .input {
+  width: 100%;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12.5px;
+}
+.setting__note {
+  font-size: 11.5px;
+  color: var(--text-mute);
+}

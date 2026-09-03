@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dieselben Farben wie die Oberflaeche (src/styles/tokens.css), damit nichts aufblitzt. -->
+<resources>
+    <color name="background">#07080D</color>
+    <color name="text">#EEF1F8</color>
+    <color name="muted">#666F84</color>
+    <color name="violet">#8B6CFF</color>
+    <color name="aqua">#2EE6D6</color>
+    <color name="ic_launcher_background">#07080D</color>
+</resources>

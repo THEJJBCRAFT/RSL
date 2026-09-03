@@ -1,15 +1,26 @@
-const CACHE_NAME = "find-mein-soon-v1";
+// Service Worker von Find Mein Soon: App-Oberflaeche offline aus dem Cache, Karten immer aus dem Netz.
+importScripts("./version.js");
+const CACHE_NAME = `find-mein-soon-${self.FMS_VERSION}`;
 const SHELL = [
   "./",
   "./index.html",
+  "./version.js",
   "./app.css",
   "./app.js",
+  "./crypto.js",
+  "./protocol.js",
+  "./format.js",
+  "./net.js",
+  "./geo.js",
+  "./map.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/icon-maskable-512.png",
   "./vendor/leaflet/leaflet.css",
   "./vendor/leaflet/leaflet.js",
+  "./vendor/mqtt/mqtt.min.js",
+  "./vendor/qrcode/qrcode.js",
   "./vendor/leaflet/images/marker-icon.png",
   "./vendor/leaflet/images/marker-shadow.png"
 ];
@@ -17,7 +28,10 @@ const SHELL = [
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => Promise.allSettled(SHELL.map(url => cache.add(url))))
+      // cache: "reload" umgeht den HTTP-Cache, damit nie eine alte Datei in einen neuen Cache wandert.
+      // Promise.all statt allSettled: Faellt eine Datei aus, wird gar nicht erst umgestellt und der alte,
+      // vollstaendige Cache bleibt erhalten (sonst waere die App offline halb neu und halb alt).
+      .then(cache => Promise.all(SHELL.map(url => cache.add(new Request(url, { cache: "reload" })))))
       .then(() => self.skipWaiting())
   );
 });
@@ -35,16 +49,18 @@ self.addEventListener("fetch", event => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  if (url.pathname.startsWith("/api/") || url.hostname.endsWith("tile.openstreetmap.org")) {
-    return;
-  }
+  // Kartenkacheln und fremde Dienste (Broker, GitHub-API) gehen immer direkt ins Netz.
+  if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then(response => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+          // Nur echte App-Seiten merken, keine Fehlerseiten des Hosters.
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put("./index.html", copy));
+          }
           return response;
         })
         .catch(() => caches.match("./index.html"))
@@ -52,18 +68,33 @@ self.addEventListener("fetch", event => {
     return;
   }
 
+  // Eigene Dateien: erst Cache (schnell, offline), dann im Hintergrund frisch holen. cache: "no-cache" prueft beim
+  // Server nach (ETag), damit nach einem Update nicht Minuten lang alte Module aus dem HTTP-Cache kommen.
   event.respondWith(
-    caches.match(request).then(cached => {
-      const network = fetch(request)
+    caches.match(request, { ignoreSearch: true }).then(cached => {
+      const network = fetch(new Request(request, { cache: "no-cache" }))
         .then(response => {
-          if (response.ok && url.origin === self.location.origin) {
+          if (response.ok) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
           return response;
         })
-        .catch(() => cached);
+        // Ohne Netz und ohne Cache-Eintrag muss trotzdem eine Antwort zurueckkommen.
+        .catch(() => cached || new Response("Offline", { status: 504, statusText: "Offline" }));
       return cached || network;
+    })
+  );
+});
+
+// Tipp auf eine Alarm-Benachrichtigung: App in den Vordergrund holen.
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      const client = list.find(item => "focus" in item);
+      if (client) return client.focus();
+      return self.clients.openWindow("./");
     })
   );
 });

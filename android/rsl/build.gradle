@@ -1,0 +1,5 @@
+// Android-Huelle fuer die RSL-App (apps/rsl-mobile).
+// Bauen: npm --prefix ../../apps/rsl-mobile run build && ./gradlew assembleRelease
+plugins {
+    id "com.android.application" version "8.9.1" apply false
+}

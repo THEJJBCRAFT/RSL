@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RSL</string>
+    <string name="no_app_for_link">Keine App zum Öffnen dieses Links gefunden.</string>
+    <string name="share_video">Video teilen</string>
+    <string name="back_again">Zum Beenden noch einmal zurück</string>
+</resources>

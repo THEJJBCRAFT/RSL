@@ -1,0 +1,199 @@
+name: RSL APK
+
+# Baut die Android-App (APK) fuer RSL. Die Oberflaeche (apps/rsl-mobile) wird dabei in die APK gepackt,
+# die App braucht keine Website und keinen eigenen Server.
+# - Bei jedem Push auf main mit Aenderungen an der App, der Huelle oder den Tests
+# - Manuell ueber "Actions" -> "RSL APK" -> "Run workflow"
+#
+# Vorher laufen die Tests (Job "test"): Typpruefung der Oberflaeche, die Protokoll-Tests der Huelle
+# (Minecraft-Ping, SRV) und ein Ende-zu-Ende-Lauf im mobilen Browser mit nachgebauter Huelle.
+# Die fertige APK liegt danach unter "Releases" (Tag rsl-latest) und als Artefakt am Workflow-Lauf.
+#
+# Einstellungen (optional):
+# - Secrets ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD:
+#   eigener Signatur-Schluessel, damit Updates ohne Deinstallation moeglich sind (siehe README).
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/**"
+    paths:
+      - "android/rsl/**"
+      - "apps/rsl-mobile/**"
+      - "test/rsl-mobile/**"
+      - "package.json"
+      - "package-lock.json"
+      - "eslint.config.js"
+      - ".github/workflows/rsl-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Alle Laeufe nacheinander, damit sich zwei Laeufe nicht gleichzeitig am selben Release zu schaffen machen.
+concurrency:
+  group: rsl-apk
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Oberflaeche und Huelle testen
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node 22 einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Java 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Abhaengigkeiten installieren
+        run: |
+          npm ci
+          npm ci --prefix apps/rsl-mobile
+
+      - name: Lint
+        run: npx eslint test/rsl-mobile
+
+      - name: Typen und Bau der Oberflaeche
+        run: npm run build --prefix apps/rsl-mobile
+
+      - name: Protokoll-Tests der Huelle (Minecraft-Ping, SRV)
+        run: node test/rsl-mobile/run-java.mjs
+
+      - name: Browser fuer den Ende-zu-Ende-Test
+        run: npx playwright install --with-deps chromium
+
+      - name: Ende-zu-Ende-Test (Handy-Groesse, nachgebaute Huelle)
+        run: node test/rsl-mobile/e2e.mjs
+
+  build:
+    name: APK bauen
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD || 'rslapp' }}
+      KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'rslapp' }}
+      # PKCS12-Keystores (Standard von keytool) haben kein eigenes Schluessel-Passwort, darum Fallback auf das Keystore-Passwort.
+      KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD || 'rslapp' }}
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Node 22 einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Java 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle einrichten
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Oberflaeche bauen
+        run: |
+          npm ci --prefix apps/rsl-mobile
+          npm run build --prefix apps/rsl-mobile
+
+      - name: Signatur-Schluessel vorbereiten
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          KEYSTORE_FILE="$RUNNER_TEMP/release.keystore"
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$KEYSTORE_FILE"
+            echo "SIGNING_NOTE=Signiert mit dem hinterlegten Keystore. Updates lassen sich direkt ueber die alte Version installieren." >> "$GITHUB_ENV"
+          else
+            # Einmaliger Schluessel: PKCS12 kennt nur ein Passwort, deshalb Keystore- und Schluessel-Passwort gleichsetzen.
+            keytool -genkeypair -v \
+              -keystore "$KEYSTORE_FILE" -storetype PKCS12 \
+              -alias "$KEY_ALIAS" \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "$KEYSTORE_PASSWORD" -keypass "$KEYSTORE_PASSWORD" \
+              -dname "CN=RSL, O=Redstone Labs, C=DE"
+            echo "KEY_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_NOTE=Signiert mit einem einmaligen Schluessel. Vor der Installation einer neueren Version muss die alte App deinstalliert werden. Fuer Updates ohne Deinstallation den Keystore als Secret hinterlegen (siehe README)." >> "$GITHUB_ENV"
+            echo "::warning title=Kein Signatur-Schluessel::APK mit Einmal-Schluessel signiert. Secrets ANDROID_KEYSTORE_* hinterlegen, damit Updates ohne Deinstallation moeglich sind."
+          fi
+          echo "KEYSTORE_FILE=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+
+      - name: APK bauen
+        working-directory: android/rsl
+        run: |
+          set -euo pipefail
+          ./gradlew assembleRelease --no-daemon --stacktrace \
+            -PversionCode="${{ github.run_number }}" \
+            -PversionName="0.1.${{ github.run_number }}" \
+            -PkeystoreFile="$KEYSTORE_FILE" \
+            -PkeystorePassword="$KEYSTORE_PASSWORD" \
+            -PkeyAlias="$KEY_ALIAS" \
+            -PkeyPassword="$KEY_PASSWORD"
+
+      - name: APK einsammeln und pruefen
+        run: |
+          set -euo pipefail
+          cp android/rsl/app/build/outputs/apk/release/app-release.apk RSL.apk
+          ls -la RSL.apk
+          # Die Oberflaeche muss in der APK stecken.
+          unzip -l RSL.apk | grep -E "assets/web/index\.html" || (echo "Oberflaeche fehlt in der APK" && exit 1)
+          unzip -l RSL.apk | grep -E "assets/web/assets/.*\.js" || (echo "Programmteil der Oberflaeche fehlt in der APK" && exit 1)
+
+      - name: APK als Artefakt speichern
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSL-apk-build-${{ github.run_number }}
+          path: RSL.apk
+          if-no-files-found: error
+
+      - name: APK unter Releases veroeffentlichen
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="rsl-latest"
+          TITLE="RSL APK (Build ${{ github.run_number }})"
+          NOTES_FILE="$RUNNER_TEMP/notes.md"
+          {
+            echo "RSL fuer Android, Build ${{ github.run_number }} (Version 0.1.${{ github.run_number }}, Commit ${{ github.sha }})."
+            echo
+            echo "Dieselbe Oberflaeche wie die Windows-App, fuers Handy gebaut: Menue unten im Daumenbereich, gleiche Farben und Bewegungen."
+            echo
+            echo "Dabei sind: RSL AI (Video-Erzeugung direkt auf dem Geraet, Speichern in Filme/RSL und Teilen), Server-Status ueber das Minecraft-Protokoll inklusive SRV, Anmeldung mit dem Microsoft-Konto samt Pruefung auf Minecraft-Besitz, Einstellungen und Info."
+            echo "Fuer die Anmeldung wird einmalig eine kostenlose Microsoft-Anwendungs-ID gebraucht; die Anleitung steht in der App unter Konto und im README."
+            echo "Nicht dabei: Launcher-Installationen und die AFK-Wache - beides braucht einen Rechner."
+            echo
+            echo "Installation: APK auf dem Handy herunterladen, oeffnen und die Installation aus unbekannten Quellen erlauben."
+            echo
+            echo "$SIGNING_NOTE"
+          } > "$NOTES_FILE"
+
+          if gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1; then
+            # Bestehendes Release aktualisieren, damit der feste Download-Link nie ins Leere zeigt.
+            git push --force origin "${{ github.sha }}:refs/tags/$TAG"
+            gh release upload "$TAG" RSL.apk --clobber --repo "${{ github.repository }}"
+            gh release edit "$TAG" --title "$TITLE" --notes-file "$NOTES_FILE" --repo "${{ github.repository }}"
+          else
+            gh release create "$TAG" RSL.apk \
+              --repo "${{ github.repository }}" \
+              --target "${{ github.sha }}" \
+              --title "$TITLE" \
+              --notes-file "$NOTES_FILE"
+          fi
+          echo "Download: https://github.com/${{ github.repository }}/releases/download/$TAG/RSL.apk"

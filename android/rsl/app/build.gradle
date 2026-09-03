@@ -1,0 +1,88 @@
+plugins {
+    id "com.android.application"
+}
+
+// Die gebaute Oberflaeche (apps/rsl-mobile/dist) wird als Asset in die APK gepackt;
+// es wird nichts von einer Website nachgeladen.
+// Werte lassen sich beim Bauen ueberschreiben, z. B.:
+//   ./gradlew assembleRelease -PversionCode=42 -PversionName=1.0.42
+def buildNumber = (findProperty("versionCode") ?: "1").toString().toInteger()
+def buildName = (findProperty("versionName") ?: "0.1.${buildNumber}").toString()
+def keystorePath = findProperty("keystoreFile")?.toString()
+def hasReleaseKeystore = keystorePath && file(keystorePath).exists()
+def webDist = file("../../../apps/rsl-mobile/dist")
+
+android {
+    namespace "de.redstonelabs.rsl"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "de.redstonelabs.rsl"
+        minSdk 24
+        targetSdk 35
+        versionCode buildNumber
+        versionName buildName
+    }
+
+    sourceSets {
+        main {
+            // Nur die gebaute Oberflaeche landet in der APK (Assets unter "web/…"), siehe Task copyWebApp.
+            assets.srcDirs += ["$buildDir/webapp"]
+        }
+    }
+
+    signingConfigs {
+        if (hasReleaseKeystore) {
+            release {
+                storeFile file(keystorePath)
+                storePassword findProperty("keystorePassword")?.toString()
+                keyAlias findProperty("keyAlias")?.toString()
+                // PKCS12-Keystores (Standard von keytool seit JDK 9) kennen kein eigenes Schluessel-Passwort.
+                keyPassword (findProperty("keyPassword") ?: findProperty("keystorePassword"))?.toString()
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            // Ohne eigenen Keystore wird mit dem Debug-Schluessel signiert, damit die APK trotzdem installierbar ist.
+            signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        // Lint laeuft mit und meldet Probleme im Build-Log, bricht den Build aber nicht ab.
+        checkReleaseBuilds true
+        abortOnError false
+        warningsAsErrors false
+    }
+}
+
+// Kopiert den Vite-Build in den Asset-Ordner der APK.
+tasks.register("copyWebApp", Copy) {
+    from(webDist)
+    into "$buildDir/webapp/web"
+    doFirst {
+        if (!webDist.exists()) {
+            throw new GradleException(
+                "apps/rsl-mobile/dist fehlt. Zuerst die Oberflaeche bauen:\n" +
+                "  npm --prefix apps/rsl-mobile ci && npm --prefix apps/rsl-mobile run build")
+        }
+    }
+}
+preBuild.dependsOn "copyWebApp"
