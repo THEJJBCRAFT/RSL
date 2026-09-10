@@ -401,6 +401,13 @@
     var last = s === SCENES[SCENES.length - 1];   // die Endkarte bleibt bis zum letzten Bild stehen
     return clamp01((t - s.start) / FADE) * (last ? 1 : clamp01((s.end - t) / FADE));
   }
+  /** Der Text einer Szene ist vor der Schnittmitte ganz weg und kommt erst nach ihr:
+   *  so liegen nie zwei Zeilen uebereinander, waehrend das Handy weich ueberblendet. */
+  function textAlphaOf(s, t) {
+    var last = s === SCENES[SCENES.length - 1];
+    var h = FADE / 2;
+    return clamp01((t - s.start - h) / h) * (last ? 1 : clamp01((s.end - t - h) / h));
+  }
 
   /* --------------------------- Die Bild-Uhr --------------------------- */
 
@@ -424,6 +431,8 @@
       node.style.visibility = a > 0.001 ? "visible" : "hidden";
       if (a <= 0.001) return;
       var tl = t - s.start;
+      var copy = s.kind === "demo" ? node.querySelector(".copy") : node.firstElementChild;
+      copy.style.opacity = Math.min(1, textAlphaOf(s, t) / a);
 
       if (s.kind === "text") {
         reveal(node, tl, [[".kicker", s.kickerAt || 0.0], [".head", s.headAt || 0.1], [".sub", s.subAt || 0.45]]);
