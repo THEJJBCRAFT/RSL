@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>RSL Werbeclip</title>
+<style>
+  /* =====================================================================
+     Werbeclip fuer die RSL-App.
+
+     Nichts wird per CSS animiert: Jedes Bild wird von setTime(t) gesetzt.
+     Nur so kommt bei 30 Bildern pro Sekunde jedes Bild genau da heraus, wo
+     es hingehoert - unabhaengig davon, wie schnell der Rechner rendert.
+     Die Farben sind die der Webseite, die Bildschirmfotos echte Aufnahmen.
+     ===================================================================== */
+
+  :root {
+    --bg: #05070b;
+    --text: #f1f7f5;
+    --muted: #a6b9b3;
+    --red: #ff3248;
+    --aqua: #4ff4cf;
+    --violet: #8b5cf6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #stage {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  /* Hintergrundlichter: wandern langsam, damit das Bild nie steht. */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    will-change: transform, opacity;
+  }
+  #glowRed {
+    width: 60vw; height: 60vw;
+    left: -14vw; bottom: -22vw;
+    background: rgba(255, 50, 72, .34);
+  }
+  #glowViolet {
+    width: 46vw; height: 46vw;
+    right: -12vw; top: -18vw;
+    background: rgba(139, 92, 246, .26);
+  }
+  .vignette {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(120% 90% at 50% 0%, transparent 38%, rgba(0, 0, 0, .6) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, .3), transparent 26%);
+  }
+  .grain {
+    position: absolute; inset: 0;
+    opacity: .045;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .scene {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: center;
+    will-change: transform, opacity;
+  }
+
+  /* ------------------------------ Breit (16:9) ------------------------------ */
+
+  [data-format="wide"] .scene {
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 100px;
+    padding: 0 130px;
+  }
+  [data-format="wide"] .kicker { font-size: 25px; }
+  [data-format="wide"] .head { font-size: 92px; }
+  [data-format="wide"] .sub { font-size: 34px; }
+  [data-format="wide"] .shot { width: 430px; }
+  [data-format="wide"] #s1, [data-format="wide"] #s5 {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  /* ------------------------------ Hoch (9:16) ------------------------------ */
+
+  [data-format="tall"] .scene {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    gap: 70px;
+    padding: 0 90px;
+  }
+  [data-format="tall"] .kicker { font-size: 30px; }
+  [data-format="tall"] .head { font-size: 96px; }
+  [data-format="tall"] .sub { font-size: 40px; }
+  [data-format="tall"] .shot { width: 520px; }
+
+  /* ------------------------------- Bausteine ------------------------------- */
+
+  .kicker {
+    display: block;
+    margin-bottom: 22px;
+    font-weight: 800;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: var(--aqua);
+  }
+  .head {
+    font-weight: 850;
+    line-height: 1.04;
+    letter-spacing: -.015em;
+  }
+  .head .red { color: var(--red); }
+  .head .grad {
+    background: linear-gradient(100deg, var(--violet), var(--aqua));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .sub {
+    margin-top: 30px;
+    line-height: 1.45;
+    color: var(--muted);
+    max-width: 27ch;
+  }
+  [data-format="tall"] .sub { max-width: 20ch; margin-inline: auto; }
+
+  .shot {
+    display: block;
+    border-radius: 40px;
+    border: 1px solid rgba(255, 255, 255, .16);
+    box-shadow: 0 70px 130px -40px rgba(0, 0, 0, .95);
+    will-change: transform, opacity;
+  }
+
+  /* Szene 1: Logo zeichnet sich */
+  .mark { width: 260px; height: 260px; }
+  [data-format="tall"] .mark { width: 300px; height: 300px; }
+  .mark path {
+    fill: none;
+    stroke: url(#markGrad);
+    stroke-width: 9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 340;
+  }
+  .wordmark {
+    margin-top: 26px;
+    font-size: 150px;
+    font-weight: 900;
+    letter-spacing: .05em;
+    line-height: 1;
+  }
+  [data-format="tall"] .wordmark { font-size: 170px; }
+
+  /* Szene 5: Endkarte */
+  #s5 .icon {
+    width: 190px; height: 190px;
+    border-radius: 46px;
+    border: 1px solid rgba(255, 255, 255, .18);
+    box-shadow: 0 50px 100px -34px rgba(0, 0, 0, .95);
+  }
+  .cta {
+    margin-top: 34px;
+    padding: 22px 54px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 50, 72, .55);
+    background: linear-gradient(90deg, rgba(255, 50, 72, .95), rgba(139, 7, 20, .95));
+    box-shadow: 0 30px 70px -24px rgba(255, 50, 72, .9);
+    font-size: 38px;
+    font-weight: 850;
+    color: #fff;
+  }
+  .url {
+    margin-top: 30px;
+    font-size: 30px;
+    letter-spacing: .02em;
+    color: var(--text);
+  }
+  .facts {
+    margin-top: 16px;
+    font-size: 24px;
+    letter-spacing: .06em;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+  <div id="stage" data-format="wide">
+    <div class="glow" id="glowRed"></div>
+    <div class="glow" id="glowViolet"></div>
+
+    <!-- Szene 1: Marke -->
+    <div class="scene" id="s1">
+      <div>
+        <svg class="mark" viewBox="0 0 120 120">
+          <defs>
+            <linearGradient id="markGrad" x1="14" y1="18" x2="106" y2="104" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#ff3248"/><stop offset="1" stop-color="#4ff4cf"/>
+            </linearGradient>
+          </defs>
+          <path id="markPath" d="M22 96V24h30a20 20 0 0 1 0 40H34l30 32M78 24v56a16 16 0 0 0 16 16h6"/>
+        </svg>
+        <div class="wordmark" id="s1Word">RSL</div>
+        <div class="sub" id="s1Sub" style="max-width:none">Redstone Labs &middot; Content Cr3w</div>
+      </div>
+    </div>
+
+    <!-- Szene 2: Server -->
+    <div class="scene" id="s2">
+      <div class="copy">
+        <span class="kicker">Server</span>
+        <h2 class="head">Sind sie <span class="red">online?</span></h2>
+        <p class="sub">Live-Status direkt über das Minecraft-Protokoll. Kein fremder Dienst dazwischen.</p>
+      </div>
+      <img class="shot" id="s2Shot" src="../../assets/img/store/rsl-3-server.webp" alt="">
+    </div>
+
+    <!-- Szene 3: RSL AI -->
+    <div class="scene" id="s3">
+      <div class="copy">
+        <span class="kicker">RSL AI</span>
+        <h2 class="head">Ein Satz. <span class="grad">Ein Clip.</span></h2>
+        <p class="sub">Gerechnet wird auf deinem Gerät. Nichts wird hochgeladen.</p>
+      </div>
+      <img class="shot" id="s3Shot" src="../../assets/img/store/rsl-2-ai.webp" alt="">
+    </div>
+
+    <!-- Szene 4: Konto -->
+    <div class="scene" id="s4">
+      <div class="copy">
+        <span class="kicker">Konto</span>
+        <h2 class="head">Minecraft <span class="red">dabei?</span></h2>
+        <p class="sub">Mit dem Microsoft-Konto anmelden – Name, UUID und Skin inklusive.</p>
+      </div>
+      <img class="shot" id="s4Shot" src="../../assets/img/store/rsl-4-konto.webp" alt="">
+    </div>
+
+    <!-- Szene 5: Endkarte -->
+    <div class="scene" id="s5">
+      <div>
+        <img class="icon" id="s5Icon" src="../../assets/img/store/icon-rsl.png" alt="">
+        <div class="wordmark" id="s5Word" style="font-size:110px;margin-top:22px">RSL</div>
+        <div class="cta" id="s5Cta" style="display:inline-block">Jetzt kostenlos laden</div>
+        <div class="url" id="s5Url">thejjbcraft.github.io/RSL/apps/store/</div>
+        <div class="facts" id="s5Facts">Android 7.0+ &middot; unter 400 KB &middot; keine Werbung</div>
+      </div>
+    </div>
+
+    <div class="grain"></div>
+    <div class="vignette"></div>
+  </div>
+
+<script>
+/* ---------------------------------------------------------------------
+   Zeitachse. Jede Szene hat ein Fenster; an den Raendern wird geblendet,
+   sodass sich zwei Szenen kurz ueberlappen.
+   --------------------------------------------------------------------- */
+(function () {
+  "use strict";
+
+  var DURATION = 15;
+  var FADE = 0.4;
+
+  var SCENES = [
+    { id: "s1", start: 0.0,  end: 3.1 },
+    { id: "s2", start: 2.9,  end: 6.1 },
+    { id: "s3", start: 5.9,  end: 9.1 },
+    { id: "s4", start: 8.9,  end: 11.9 },
+    { id: "s5", start: 11.7, end: DURATION }
+  ];
+
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function easeOut(p) { return 1 - Math.pow(1 - clamp01(p), 3); }
+  function easeInOut(p) { p = clamp01(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+
+  var el = {};
+  ["s1", "s2", "s3", "s4", "s5", "markPath", "s1Word", "s1Sub", "s2Shot", "s3Shot", "s4Shot",
+   "s5Icon", "s5Word", "s5Cta", "s5Url", "s5Facts", "glowRed", "glowViolet"].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
+
+  /** Deckkraft einer Szene zum Zeitpunkt t, mit Ein- und Ausblenden. */
+  function alphaOf(scene, t) {
+    return clamp01((t - scene.start) / FADE) * clamp01((scene.end - t) / FADE);
+  }
+
+  /** Fortschritt innerhalb einer Szene, 0 bis 1 ueber die ersten `over` Sekunden. */
+  function progress(scene, t, over) {
+    return easeOut((t - scene.start) / over);
+  }
+
+  window.setTime = function (t) {
+    t = Math.max(0, Math.min(DURATION, t));
+
+    // Hintergrundlichter driften ueber die ganze Laenge.
+    var drift = t / DURATION;
+    el.glowRed.style.transform = "translate(" + (drift * 130) + "px," + (-drift * 70) + "px)";
+    el.glowViolet.style.transform = "translate(" + (-drift * 110) + "px," + (drift * 90) + "px)";
+
+    SCENES.forEach(function (scene) {
+      var node = el[scene.id];
+      var a = alphaOf(scene, t);
+      node.style.opacity = a;
+      // Unsichtbare Szenen ganz wegschieben, damit sie nichts ueberdecken.
+      node.style.visibility = a > 0.001 ? "visible" : "hidden";
+    });
+
+    // --- Szene 1: Zeichnen, dann Wortmarke
+    var p1 = clamp01((t - 0.15) / 1.25);
+    el.markPath.style.strokeDashoffset = 340 * (1 - easeInOut(p1));
+    var w1 = clamp01((t - 1.15) / 0.7);
+    el.s1Word.style.opacity = w1;
+    el.s1Word.style.transform = "translateY(" + (26 * (1 - easeOut(w1))) + "px)";
+    var u1 = clamp01((t - 1.5) / 0.7);
+    el.s1Sub.style.opacity = u1 * 0.9;
+    el.s1Sub.style.transform = "translateY(" + (18 * (1 - easeOut(u1))) + "px)";
+
+    // --- Szenen 2 bis 4: Text von links, Handy von rechts, dann langsamer Zoom
+    [["s2", el.s2Shot], ["s3", el.s3Shot], ["s4", el.s4Shot]].forEach(function (pair) {
+      var scene = SCENES.filter(function (s) { return s.id === pair[0]; })[0];
+      var node = el[scene.id];
+      var copy = node.querySelector(".copy");
+      var p = progress(scene, t, 0.9);
+      var span = (t - scene.start) / (scene.end - scene.start);
+      copy.style.transform = "translateY(" + (30 * (1 - p)) + "px)";
+      copy.style.opacity = p;
+      pair[1].style.transform =
+        "translateX(" + (90 * (1 - p)) + "px) scale(" + (0.965 + 0.05 * clamp01(span)) + ")";
+      pair[1].style.opacity = p;
+    });
+
+    // --- Szene 5: Endkarte, Teil fuer Teil
+    var s5 = SCENES[4];
+    var i5 = progress(s5, t, 0.8);
+    el.s5Icon.style.opacity = i5;
+    el.s5Icon.style.transform = "scale(" + (0.86 + 0.14 * i5) + ")";
+    var stack = [[el.s5Word, 0.35], [el.s5Cta, 0.6], [el.s5Url, 0.9], [el.s5Facts, 1.1]];
+    stack.forEach(function (item) {
+      var p = easeOut((t - s5.start - item[1]) / 0.6);
+      item[0].style.opacity = p;
+      item[0].style.transform = "translateY(" + (22 * (1 - p)) + "px)";
+    });
+  };
+
+  window.setFormat = function (format) {
+    document.getElementById("stage").dataset.format = format;
+  };
+
+  window.adDuration = DURATION;
+  window.setTime(0);
+})();
+</script>
+</body>
+</html>
