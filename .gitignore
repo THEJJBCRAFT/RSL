@@ -18,3 +18,7 @@ android/**/local.properties
 *.jks
 *.keystore.b64
 *.b64
+
+# Werbeclips entstehen aus tools/make-rsl-ad.mjs und werden erst nach dem
+# fertigen Render eingecheckt - halb geschriebene Dateien bleiben draussen.
+assets/video/*.tmp

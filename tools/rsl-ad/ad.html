@@ -59,11 +59,23 @@
     right: -12vw; top: -18vw;
     background: rgba(139, 92, 246, .26);
   }
+  /* Im Hochformat ist die Breite die kleine Seite - die Lichter muessen
+     mitwachsen, sonst sind sie nur noch Flecken in den Ecken. */
+  [data-format="tall"] #glowRed {
+    width: 105vw; height: 105vw;
+    left: -30vw; bottom: -34vw;
+    background: rgba(255, 50, 72, .3);
+  }
+  [data-format="tall"] #glowViolet {
+    width: 85vw; height: 85vw;
+    right: -26vw; top: -26vw;
+    background: rgba(139, 92, 246, .24);
+  }
+  /* Nur ein sanfter Rand: von der Mitte aus, sonst versinkt im Hochformat
+     die untere Haelfte im Schwarz. */
   .vignette {
     position: absolute; inset: 0;
-    background:
-      radial-gradient(120% 90% at 50% 0%, transparent 38%, rgba(0, 0, 0, .6) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, .3), transparent 26%);
+    background: radial-gradient(145% 115% at 50% 46%, transparent 48%, rgba(0, 0, 0, .48) 100%);
   }
   .grain {
     position: absolute; inset: 0;
