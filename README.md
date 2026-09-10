@@ -210,6 +210,25 @@ Ohne sie zeigt der Konto-Bereich statt des Anmelde-Knopfs die Anleitung.
 Die AFK-Wache soll spaeter auf dieser Anmeldung aufsetzen; bis dahin ist der Konto-Bereich fuer
 sich nutzbar.
 
+### Werbeclip
+
+Unter `assets/video/` liegen zwei fertige Werbeclips fuer die RSL-App, 15 Sekunden, ohne Ton,
+damit eigene Musik druntergelegt werden kann:
+
+- `rsl-werbung-16-9.mp4` (1920x1080) fuer YouTube und Webseite
+- `rsl-werbung-9-16.mp4` (1080x1920) fuer Shorts, Reels und TikTok
+
+Die Clips entstehen aus `tools/rsl-ad/ad.html` (die Szenen) und `tools/make-rsl-ad.mjs` (rendert
+Bild fuer Bild in Chromium und schiebt sie in ffmpeg). Fuenf Szenen: Marke, Server, RSL AI, Konto,
+Endkarte mit Store-Adresse. Die Bildschirmfotos darin sind dieselben echten Aufnahmen wie im App Store.
+
+Neu bauen (braucht ein ffmpeg mit libx264, z. B. `npm install --no-save @ffmpeg-installer/ffmpeg`):
+
+```
+node tools/make-rsl-ad.mjs         # beide Formate, je etwa fuenf Minuten
+node tools/make-rsl-ad.mjs tall    # nur 9:16
+```
+
 ### Android-App (APK)
 
 Die APK wird von GitHub gebaut und enthaelt die Oberflaeche als Assets. Sie laedt nichts von einer
