@@ -727,3 +727,141 @@ button:active { transform: scale(.97); }
   }
   .rsl-item, .mod-card { opacity: 1; transform: none; }
 }
+
+/* ===================================================================
+   Werbung fuer die RSL-App auf der Startseite
+   =================================================================== */
+
+.rsl-promo {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 40px;
+  margin: 0 auto 40px;
+  width: min(1180px, calc(100% - 48px));
+  padding: 42px 46px;
+  border-radius: var(--rsl-radius-lg);
+  border: 1px solid var(--rsl-red-line);
+  background:
+    radial-gradient(720px 340px at 6% 110%, rgba(255, 50, 72, .3), transparent 70%),
+    radial-gradient(520px 300px at 96% -10%, rgba(139, 92, 246, .22), transparent 70%),
+    linear-gradient(118deg, rgba(139, 7, 20, .46), rgba(8, 5, 10, .94));
+  box-shadow: var(--rsl-shadow);
+}
+
+.rsl-promo h2 {
+  margin: 10px 0 12px;
+  font-size: clamp(24px, 3.4vw, 36px);
+  line-height: 1.14;
+  max-width: 30ch;
+}
+.rsl-promo__copy > p {
+  margin: 0 0 24px;
+  max-width: 56ch;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.rsl-promo__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  gap: 16px 26px;
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+}
+.rsl-promo__list li {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+}
+.rsl-promo__list svg {
+  width: 21px;
+  height: 21px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--rsl-aqua);
+}
+.rsl-promo__list strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 15px;
+}
+.rsl-promo__list span {
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.rsl-promo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.rsl-promo__note {
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  color: var(--text-mute, #7d8794);
+}
+
+/* Handy-Bild mit dem App-Symbol davor. */
+.rsl-promo__art {
+  position: relative;
+  flex: none;
+  padding: 0 26px 26px 0;
+}
+.rsl-promo__shot {
+  display: block;
+  width: 240px;
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .95);
+  transform: rotate(3deg);
+}
+.rsl-promo__icon {
+  position: absolute;
+  right: 0;
+  bottom: 8px;
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  box-shadow: 0 20px 40px -14px rgba(0, 0, 0, .95);
+}
+
+@media (max-width: 900px) {
+  .rsl-promo {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    width: calc(100% - 28px);
+    padding: 30px 24px;
+  }
+  .rsl-promo h2 {
+    max-width: none;
+  }
+  /* Das Bild wandert nach oben und schrumpft, damit der Text zuerst kommt. */
+  .rsl-promo__art {
+    order: -1;
+    align-self: center;
+    padding: 0 22px 22px 0;
+  }
+  .rsl-promo__shot {
+    width: 186px;
+    transform: none;
+  }
+  .rsl-promo__icon {
+    width: 62px;
+    height: 62px;
+    border-radius: 16px;
+  }
+  .rsl-promo__actions .btn-download,
+  .rsl-promo__actions .enter-button {
+    flex: 1 1 200px;
+    justify-content: center;
+    text-align: center;
+  }
+}
