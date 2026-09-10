@@ -2,15 +2,17 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>RSL Werbeclip</title>
+<title>RSL Werbeclip - Tutorial-Fassung</title>
 <style>
   /* =====================================================================
-     Werbeclip fuer die RSL-App.
+     Werbeclip fuer die RSL-App, zweite Fassung: Story-Einstieg, dann die
+     App in echter Bedienung (scrollen, tippen, Ergebnis), zum Schluss der
+     Aufruf. Alle Handy-Bilder sind Aufnahmen der echten App
+     (tools/rsl-ad/capture.mjs); der Clip setzt sie nur in Bewegung.
 
-     Nichts wird per CSS animiert: Jedes Bild wird von setTime(t) gesetzt.
-     Nur so kommt bei 30 Bildern pro Sekunde jedes Bild genau da heraus, wo
-     es hingehoert - unabhaengig davon, wie schnell der Rechner rendert.
-     Die Farben sind die der Webseite, die Bildschirmfotos echte Aufnahmen.
+     Nichts wird per CSS animiert: setTime(t) stellt jedes Bild einzeln,
+     damit bei 30 Bildern pro Sekunde jedes Bild genau dort sitzt, wo es
+     hingehoert - egal wie schnell der Rechner rendert.
      ===================================================================== */
 
   :root {
@@ -20,365 +22,524 @@
     --red: #ff3248;
     --aqua: #4ff4cf;
     --violet: #8b5cf6;
+    --gold: #ffd166;
+    --phone-w: 390px;
+    --phone-h: 844px;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     overflow: hidden;
     background: var(--bg);
     color: var(--text);
     font-family: "Segoe UI", Arial, Helvetica, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-
   #stage {
     position: relative;
-    width: 100vw;
-    height: 100vh;
+    width: 100vw; height: 100vh;
     overflow: hidden;
     background: var(--bg);
   }
 
-  /* Hintergrundlichter: wandern langsam, damit das Bild nie steht. */
-  .glow {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(90px);
-    will-change: transform, opacity;
-  }
-  #glowRed {
-    width: 60vw; height: 60vw;
-    left: -14vw; bottom: -22vw;
-    background: rgba(255, 50, 72, .34);
-  }
-  #glowViolet {
-    width: 46vw; height: 46vw;
-    right: -12vw; top: -18vw;
-    background: rgba(139, 92, 246, .26);
-  }
-  /* Im Hochformat ist die Breite die kleine Seite - die Lichter muessen
-     mitwachsen, sonst sind sie nur noch Flecken in den Ecken. */
-  [data-format="tall"] #glowRed {
-    width: 105vw; height: 105vw;
-    left: -30vw; bottom: -34vw;
-    background: rgba(255, 50, 72, .3);
-  }
-  [data-format="tall"] #glowViolet {
-    width: 85vw; height: 85vw;
-    right: -26vw; top: -26vw;
-    background: rgba(139, 92, 246, .24);
-  }
-  /* Nur ein sanfter Rand: von der Mitte aus, sonst versinkt im Hochformat
-     die untere Haelfte im Schwarz. */
-  .vignette {
-    position: absolute; inset: 0;
-    background: radial-gradient(145% 115% at 50% 46%, transparent 48%, rgba(0, 0, 0, .48) 100%);
-  }
+  /* Hintergrundlichter, driften ueber die ganze Laenge. */
+  .glow { position: absolute; border-radius: 50%; filter: blur(90px); will-change: transform; }
+  #glowRed { width: 60vw; height: 60vw; left: -14vw; bottom: -22vw; background: rgba(255, 50, 72, .34); }
+  #glowViolet { width: 46vw; height: 46vw; right: -12vw; top: -18vw; background: rgba(139, 92, 246, .26); }
+  [data-format="tall"] #glowRed { width: 105vw; height: 105vw; left: -30vw; bottom: -34vw; background: rgba(255, 50, 72, .3); }
+  [data-format="tall"] #glowViolet { width: 85vw; height: 85vw; right: -26vw; top: -26vw; background: rgba(139, 92, 246, .24); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(145% 115% at 50% 46%, transparent 48%, rgba(0, 0, 0, .48) 100%); }
   .grain {
-    position: absolute; inset: 0;
-    opacity: .045;
-    mix-blend-mode: overlay;
+    position: absolute; inset: 0; opacity: .045; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
+  /* ------------------------------- Szenen ------------------------------- */
+
   .scene {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     display: grid;
     align-content: center;
-    will-change: transform, opacity;
+    will-change: opacity;
   }
-
-  /* ------------------------------ Breit (16:9) ------------------------------ */
-
-  [data-format="wide"] .scene {
+  .scene[data-kind="text"], .scene[data-kind="brand"], .scene[data-kind="cta"] {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 0 8vw;
+  }
+  [data-format="wide"] .scene[data-kind="demo"] {
     grid-template-columns: 1fr auto;
     align-items: center;
-    gap: 100px;
-    padding: 0 130px;
+    gap: 90px;
+    padding: 0 120px;
   }
-  [data-format="wide"] .kicker { font-size: 25px; }
-  [data-format="wide"] .head { font-size: 92px; }
-  [data-format="wide"] .sub { font-size: 34px; }
-  [data-format="wide"] .shot { width: 430px; }
-  [data-format="wide"] #s1, [data-format="wide"] #s5 {
+  [data-format="tall"] .scene[data-kind="demo"] {
     grid-template-columns: 1fr;
     justify-items: center;
     text-align: center;
+    align-content: start;
+    gap: 46px;
+    padding: 150px 80px 0;
   }
-
-  /* ------------------------------ Hoch (9:16) ------------------------------ */
-
-  [data-format="tall"] .scene {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-    gap: 70px;
-    padding: 0 90px;
-  }
-  [data-format="tall"] .kicker { font-size: 30px; }
-  [data-format="tall"] .head { font-size: 96px; }
-  [data-format="tall"] .sub { font-size: 40px; }
-  [data-format="tall"] .shot { width: 520px; }
-
-  /* ------------------------------- Bausteine ------------------------------- */
 
   .kicker {
-    display: block;
-    margin-bottom: 22px;
-    font-weight: 800;
-    letter-spacing: .3em;
-    text-transform: uppercase;
+    display: block; margin-bottom: 20px;
+    font-weight: 800; letter-spacing: .3em; text-transform: uppercase;
     color: var(--aqua);
   }
-  .head {
-    font-weight: 850;
-    line-height: 1.04;
-    letter-spacing: -.015em;
-  }
+  .head { font-weight: 850; line-height: 1.04; letter-spacing: -.015em; }
   .head .red { color: var(--red); }
   .head .grad {
     background: linear-gradient(100deg, var(--violet), var(--aqua));
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
   }
-  .sub {
-    margin-top: 30px;
-    line-height: 1.45;
-    color: var(--muted);
-    max-width: 27ch;
-  }
-  [data-format="tall"] .sub { max-width: 20ch; margin-inline: auto; }
+  .sub { margin-top: 26px; line-height: 1.45; color: var(--muted); }
+  .kicker, .head, .sub { will-change: transform, opacity; }
 
-  .shot {
-    display: block;
-    border-radius: 40px;
-    border: 1px solid rgba(255, 255, 255, .16);
-    box-shadow: 0 70px 130px -40px rgba(0, 0, 0, .95);
+  [data-format="wide"] .kicker { font-size: 24px; }
+  [data-format="wide"] .head { font-size: 84px; }
+  [data-format="wide"] .scene[data-kind="text"] .head { font-size: 118px; max-width: 16ch; }
+  [data-format="wide"] .sub { font-size: 33px; max-width: 26ch; }
+  [data-format="wide"] .scene[data-kind="text"] .sub { font-size: 40px; max-width: 32ch; }
+
+  [data-format="tall"] .kicker { font-size: 28px; }
+  [data-format="tall"] .head { font-size: 86px; }
+  [data-format="tall"] .scene[data-kind="text"] .head { font-size: 112px; }
+  [data-format="tall"] .sub { font-size: 38px; max-width: 24ch; margin-inline: auto; }
+  [data-format="tall"] .scene[data-kind="text"] .sub { font-size: 44px; max-width: 22ch; }
+
+  /* ------------------------------- Handy ------------------------------- */
+
+  .phone-slot { will-change: transform, opacity; }
+  .phone {
+    position: relative;
+    width: calc(var(--phone-w) + 22px);
+    height: calc(var(--phone-h) + 22px);
+    padding: 11px;
+    border-radius: 54px;
+    background: #0b0d12;
+    border: 1px solid rgba(255, 255, 255, .14);
+    box-shadow: 0 70px 130px -40px rgba(0, 0, 0, .95), inset 0 0 0 1px rgba(255, 255, 255, .04);
+    transform-origin: center;
+  }
+  [data-format="wide"] .phone { transform: scale(1.02); }
+  [data-format="tall"] .phone { transform: scale(1.28); transform-origin: top center; }
+  .ph-screen {
+    position: relative;
+    width: var(--phone-w); height: var(--phone-h);
+    border-radius: 44px;
+    overflow: hidden;
+    background: #07080d;
+  }
+  .ph-full, .ph-layer { position: absolute; inset: 0; }
+  .ph-full { width: 100%; height: 100%; display: block; }
+  .ph-a { z-index: 1; }
+  .ph-layer { display: none; z-index: 2; }
+  .ph-layer.is-on { display: block; }
+  .ph-b { opacity: 0; z-index: 3; }
+  .ph-top, .ph-nav { position: absolute; left: 0; width: 100%; display: block; z-index: 2; }
+  .ph-top { top: 0; }
+  .ph-nav { bottom: 0; }
+  .ph-bodywrap { position: absolute; left: 0; width: 100%; overflow: hidden; }
+  .ph-body { display: block; width: 100%; will-change: transform; }
+
+  /* Der Finger: ein Ring, der sich beim Tippen weitet. */
+  .ph-tap {
+    position: absolute; z-index: 5;
+    width: 64px; height: 64px;
+    margin: -32px 0 0 -32px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, .95);
+    background: rgba(255, 255, 255, .18);
+    box-shadow: 0 0 0 6px rgba(255, 50, 72, .35);
+    opacity: 0;
+    pointer-events: none;
     will-change: transform, opacity;
   }
 
-  /* Szene 1: Logo zeichnet sich */
-  .mark { width: 260px; height: 260px; }
-  [data-format="tall"] .mark { width: 300px; height: 300px; }
-  .mark path {
-    fill: none;
-    stroke: url(#markGrad);
-    stroke-width: 9;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-dasharray: 340;
-  }
-  .wordmark {
-    margin-top: 26px;
-    font-size: 150px;
-    font-weight: 900;
-    letter-spacing: .05em;
-    line-height: 1;
-  }
-  [data-format="tall"] .wordmark { font-size: 170px; }
+  /* ------------------------------- Marke ------------------------------- */
 
-  /* Szene 5: Endkarte */
-  #s5 .icon {
-    width: 190px; height: 190px;
-    border-radius: 46px;
+  .mark { width: 230px; height: 230px; }
+  [data-format="tall"] .mark { width: 280px; height: 280px; }
+  .mark path {
+    fill: none; stroke: url(#markGrad); stroke-width: 9;
+    stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 340;
+  }
+  .wordmark { margin-top: 22px; font-size: 140px; font-weight: 900; letter-spacing: .05em; line-height: 1; }
+  [data-format="tall"] .wordmark { font-size: 160px; }
+
+  /* ------------------------------ Endkarte ------------------------------ */
+
+  .cta-icon {
+    width: 180px; height: 180px; border-radius: 44px;
     border: 1px solid rgba(255, 255, 255, .18);
     box-shadow: 0 50px 100px -34px rgba(0, 0, 0, .95);
   }
-  .cta {
-    margin-top: 34px;
-    padding: 22px 54px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 50, 72, .55);
+  .cta-btn {
+    display: inline-block; margin-top: 30px; padding: 22px 54px;
+    border-radius: 999px; border: 1px solid rgba(255, 50, 72, .55);
     background: linear-gradient(90deg, rgba(255, 50, 72, .95), rgba(139, 7, 20, .95));
     box-shadow: 0 30px 70px -24px rgba(255, 50, 72, .9);
-    font-size: 38px;
-    font-weight: 850;
-    color: #fff;
+    font-size: 38px; font-weight: 850; color: #fff;
   }
-  .url {
-    margin-top: 30px;
-    font-size: 30px;
-    letter-spacing: .02em;
-    color: var(--text);
-  }
-  .facts {
-    margin-top: 16px;
-    font-size: 24px;
-    letter-spacing: .06em;
-    color: var(--muted);
-  }
+  .cta-url { margin-top: 28px; font-size: 32px; letter-spacing: .02em; color: var(--text); }
+  .cta-facts { margin-top: 14px; font-size: 24px; letter-spacing: .06em; color: var(--muted); }
+  .cta-icon, .cta-btn, .cta-url, .cta-facts, .wordmark { will-change: transform, opacity; }
 </style>
 </head>
 <body>
   <div id="stage" data-format="wide">
     <div class="glow" id="glowRed"></div>
     <div class="glow" id="glowViolet"></div>
-
-    <!-- Szene 1: Marke -->
-    <div class="scene" id="s1">
-      <div>
-        <svg class="mark" viewBox="0 0 120 120">
-          <defs>
-            <linearGradient id="markGrad" x1="14" y1="18" x2="106" y2="104" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#ff3248"/><stop offset="1" stop-color="#4ff4cf"/>
-            </linearGradient>
-          </defs>
-          <path id="markPath" d="M22 96V24h30a20 20 0 0 1 0 40H34l30 32M78 24v56a16 16 0 0 0 16 16h6"/>
-        </svg>
-        <div class="wordmark" id="s1Word">RSL</div>
-        <div class="sub" id="s1Sub" style="max-width:none">Redstone Labs &middot; Content Cr3w</div>
-      </div>
-    </div>
-
-    <!-- Szene 2: Server -->
-    <div class="scene" id="s2">
-      <div class="copy">
-        <span class="kicker">Server</span>
-        <h2 class="head">Sind sie <span class="red">online?</span></h2>
-        <p class="sub">Live-Status direkt über das Minecraft-Protokoll. Kein fremder Dienst dazwischen.</p>
-      </div>
-      <img class="shot" id="s2Shot" src="../../assets/img/store/rsl-3-server.webp" alt="">
-    </div>
-
-    <!-- Szene 3: RSL AI -->
-    <div class="scene" id="s3">
-      <div class="copy">
-        <span class="kicker">RSL AI</span>
-        <h2 class="head">Ein Satz. <span class="grad">Ein Clip.</span></h2>
-        <p class="sub">Gerechnet wird auf deinem Gerät. Nichts wird hochgeladen.</p>
-      </div>
-      <img class="shot" id="s3Shot" src="../../assets/img/store/rsl-2-ai.webp" alt="">
-    </div>
-
-    <!-- Szene 4: Konto -->
-    <div class="scene" id="s4">
-      <div class="copy">
-        <span class="kicker">Konto</span>
-        <h2 class="head">Minecraft <span class="red">dabei?</span></h2>
-        <p class="sub">Mit dem Microsoft-Konto anmelden – Name, UUID und Skin inklusive.</p>
-      </div>
-      <img class="shot" id="s4Shot" src="../../assets/img/store/rsl-4-konto.webp" alt="">
-    </div>
-
-    <!-- Szene 5: Endkarte -->
-    <div class="scene" id="s5">
-      <div>
-        <img class="icon" id="s5Icon" src="../../assets/img/store/icon-rsl.png" alt="">
-        <div class="wordmark" id="s5Word" style="font-size:110px;margin-top:22px">RSL</div>
-        <div class="cta" id="s5Cta" style="display:inline-block">Jetzt kostenlos laden</div>
-        <div class="url" id="s5Url">thejjbcraft.github.io/RSL/apps/store/</div>
-        <div class="facts" id="s5Facts">Android 7.0+ &middot; unter 400 KB &middot; keine Werbung</div>
-      </div>
-    </div>
-
+    <svg width="0" height="0" style="position:absolute">
+      <defs>
+        <linearGradient id="markGrad" x1="14" y1="18" x2="106" y2="104" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#ff3248"/><stop offset="1" stop-color="#4ff4cf"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    <div id="scenes"></div>
     <div class="grain"></div>
     <div class="vignette"></div>
   </div>
 
 <script>
-/* ---------------------------------------------------------------------
-   Zeitachse. Jede Szene hat ein Fenster; an den Raendern wird geblendet,
-   sodass sich zwei Szenen kurz ueberlappen.
-   --------------------------------------------------------------------- */
 (function () {
   "use strict";
 
-  var DURATION = 15;
-  var FADE = 0.4;
-
-  var SCENES = [
-    { id: "s1", start: 0.0,  end: 3.1 },
-    { id: "s2", start: 2.9,  end: 6.1 },
-    { id: "s3", start: 5.9,  end: 9.1 },
-    { id: "s4", start: 8.9,  end: 11.9 },
-    { id: "s5", start: 11.7, end: DURATION }
-  ];
+  /* ------------------------------ Werkzeug ------------------------------ */
 
   function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
   function easeOut(p) { return 1 - Math.pow(1 - clamp01(p), 3); }
   function easeInOut(p) { p = clamp01(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
-
-  var el = {};
-  ["s1", "s2", "s3", "s4", "s5", "markPath", "s1Word", "s1Sub", "s2Shot", "s3Shot", "s4Shot",
-   "s5Icon", "s5Word", "s5Cta", "s5Url", "s5Facts", "glowRed", "glowViolet"].forEach(function (id) {
-    el[id] = document.getElementById(id);
-  });
-
-  /** Deckkraft einer Szene zum Zeitpunkt t, mit Ein- und Ausblenden. */
-  function alphaOf(scene, t) {
-    return clamp01((t - scene.start) / FADE) * clamp01((scene.end - t) / FADE);
+  function lerp(a, b, p) { return a + (b - a) * p; }
+  function esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; }); }
+  /** Erlaubt <red>..</red> und <grad>..</grad> im Bildtext. */
+  function rich(s) {
+    return esc(s)
+      .replace(/&lt;red&gt;/g, '<span class="red">').replace(/&lt;\/red&gt;/g, "</span>")
+      .replace(/&lt;grad&gt;/g, '<span class="grad">').replace(/&lt;\/grad&gt;/g, "</span>");
   }
 
-  /** Fortschritt innerhalb einer Szene, 0 bis 1 ueber die ersten `over` Sekunden. */
-  function progress(scene, t, over) {
-    return easeOut((t - scene.start) / over);
+  var FADE = 0.4;
+  var M = null;      // manifest der Aufnahmen
+  var IMG = {};      // vorgeladene Bilder
+  function src(name) { return "captures/" + name + ".png"; }
+
+  /* ------------------------------- Handy ------------------------------- */
+
+  function createPhone() {
+    var el = document.createElement("div");
+    el.className = "phone";
+    el.innerHTML =
+      '<div class="ph-screen">' +
+        '<img class="ph-full ph-a" alt="">' +
+        '<div class="ph-layer"><img class="ph-top" alt=""><div class="ph-bodywrap"><img class="ph-body" alt=""></div><img class="ph-nav" alt=""></div>' +
+        '<img class="ph-full ph-b" alt="">' +
+        '<div class="ph-tap"></div>' +
+      "</div>";
+    var a = el.querySelector(".ph-a"), b = el.querySelector(".ph-b");
+    var layer = el.querySelector(".ph-layer");
+    var top = el.querySelector(".ph-top"), body = el.querySelector(".ph-body"), nav = el.querySelector(".ph-nav");
+    var wrap = el.querySelector(".ph-bodywrap");
+    var tap = el.querySelector(".ph-tap");
+    var cur = { a: "", b: "", layered: "" };
+
+    function set(img, name) {
+      if (!name) return;
+      var s = src(name);
+      if (img.getAttribute("src") !== s) img.setAttribute("src", s);
+    }
+    return {
+      el: el,
+      /** Ein Vollbild, optional mit Ueberblendung zu einem zweiten (mix 0..1). */
+      full: function (nameA, nameB, mix) {
+        layer.classList.remove("is-on");
+        set(a, nameA);
+        if (nameB) { set(b, nameB); b.style.opacity = clamp01(mix || 0); } else { b.style.opacity = 0; }
+      },
+      /** Lange Ansicht in Lagen: Kopfzeile und Menue fest, Inhalt scrollt.
+       *  Optional blendet ein Vollbild (nameB, mix 0..1) darueber ein. */
+      layered: function (route, scroll, nameB, mix) {
+        var L = M.layered[route];
+        layer.classList.add("is-on");
+        set(top, route + "-top"); set(body, route + "-body"); set(nav, route + "-nav");
+        top.style.height = L.top + "px";
+        nav.style.height = L.nav + "px";
+        wrap.style.top = L.top + "px";
+        wrap.style.height = (M.height - L.top - L.nav) + "px";
+        body.style.height = L.body + "px";
+        body.style.transform = "translateY(" + (-Math.round(scroll)) + "px)";
+        if (nameB) { set(b, nameB); b.style.opacity = clamp01(mix || 0); } else { b.style.opacity = 0; }
+      },
+      /** Wie weit laesst sich eine Lage scrollen? */
+      maxScroll: function (route) {
+        var L = M.layered[route];
+        return Math.max(0, L.body - (M.height - L.top - L.nav));
+      },
+      /** Der Finger: p von 0 (Beginn) bis 1 (verklungen). */
+      tap: function (rect, p) {
+        if (!rect || p < 0 || p > 1) { tap.style.opacity = 0; return; }
+        tap.style.left = rect.x + "px";
+        tap.style.top = rect.y + "px";
+        tap.style.opacity = (1 - easeOut(p)) * 0.95;
+        tap.style.transform = "scale(" + lerp(0.55, 1.7, easeOut(p)) + ")";
+      }
+    };
   }
+
+  /* ------------------------------- Szenen ------------------------------- */
+
+  var SCENES = [];   // gefuellt von defineScenes()
+  var nodes = {};
+
+  function textScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "text"; n.id = s.id;
+    n.innerHTML = '<div>' +
+      (s.kicker ? '<span class="kicker">' + esc(s.kicker) + "</span>" : "") +
+      '<h2 class="head">' + rich(s.head) + "</h2>" +
+      (s.sub ? '<p class="sub">' + rich(s.sub) + "</p>" : "") + "</div>";
+    return n;
+  }
+  function brandScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "brand"; n.id = s.id;
+    n.innerHTML = '<div>' +
+      '<svg class="mark" viewBox="0 0 120 120"><path class="markPath" d="M22 96V24h30a20 20 0 0 1 0 40H34l30 32M78 24v56a16 16 0 0 0 16 16h6"/></svg>' +
+      '<div class="wordmark">RSL</div>' +
+      '<p class="sub" style="max-width:none">' + rich(s.sub || "") + "</p></div>";
+    return n;
+  }
+  function demoScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "demo"; n.id = s.id;
+    n.innerHTML = '<div class="copy">' +
+      (s.kicker ? '<span class="kicker">' + esc(s.kicker) + "</span>" : "") +
+      '<h2 class="head">' + rich(s.head) + "</h2>" +
+      (s.sub ? '<p class="sub">' + rich(s.sub) + "</p>" : "") + "</div>" +
+      '<div class="phone-slot"></div>';
+    var phone = createPhone();
+    n.querySelector(".phone-slot").appendChild(phone.el);
+    s.phoneApi = phone;
+    return n;
+  }
+  function ctaScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "cta"; n.id = s.id;
+    n.innerHTML = '<div>' +
+      '<img class="cta-icon" src="../../assets/img/store/icon-rsl.png" alt="">' +
+      '<div class="wordmark" style="font-size:104px;margin-top:20px">RSL</div>' +
+      '<div class="cta-btn">' + esc(s.button) + "</div>" +
+      '<div class="cta-url">' + esc(s.url) + "</div>" +
+      '<div class="cta-facts">' + esc(s.facts) + "</div></div>";
+    return n;
+  }
+
+  function build() {
+    var host = document.getElementById("scenes");
+    host.innerHTML = "";
+    SCENES.forEach(function (s) {
+      var n = s.kind === "text" ? textScene(s) : s.kind === "brand" ? brandScene(s)
+        : s.kind === "demo" ? demoScene(s) : ctaScene(s);
+      host.appendChild(n);
+      nodes[s.id] = n;
+    });
+  }
+
+  /** Text-Elemente einer Szene gestaffelt einblenden. */
+  function reveal(node, tl, order) {
+    order.forEach(function (item, i) {
+      var el = node.querySelector(item[0]);
+      if (!el) return;
+      var p = easeOut((tl - item[1]) / 0.6);
+      el.style.opacity = p;
+      el.style.transform = "translateY(" + (26 * (1 - p)) + "px)";
+    });
+  }
+
+  function alphaOf(s, t) {
+    return clamp01((t - s.start) / FADE) * clamp01((s.end - t) / FADE);
+  }
+
+  /* --------------------------- Die Bild-Uhr --------------------------- */
+
+  var format = "wide";
 
   window.setTime = function (t) {
-    t = Math.max(0, Math.min(DURATION, t));
+    var total = SCENES[SCENES.length - 1].end;
+    t = Math.max(0, Math.min(total, t));
+    var drift = t / total;
+    document.getElementById("glowRed").style.transform = "translate(" + (drift * 140) + "px," + (-drift * 80) + "px)";
+    document.getElementById("glowViolet").style.transform = "translate(" + (-drift * 120) + "px," + (drift * 100) + "px)";
 
-    // Hintergrundlichter driften ueber die ganze Laenge.
-    var drift = t / DURATION;
-    el.glowRed.style.transform = "translate(" + (drift * 130) + "px," + (-drift * 70) + "px)";
-    el.glowViolet.style.transform = "translate(" + (-drift * 110) + "px," + (drift * 90) + "px)";
-
-    SCENES.forEach(function (scene) {
-      var node = el[scene.id];
-      var a = alphaOf(scene, t);
+    SCENES.forEach(function (s) {
+      var node = nodes[s.id];
+      var a = alphaOf(s, t);
       node.style.opacity = a;
-      // Unsichtbare Szenen ganz wegschieben, damit sie nichts ueberdecken.
       node.style.visibility = a > 0.001 ? "visible" : "hidden";
-    });
+      if (a <= 0.001) return;
+      var tl = t - s.start;
 
-    // --- Szene 1: Zeichnen, dann Wortmarke
-    var p1 = clamp01((t - 0.15) / 1.25);
-    el.markPath.style.strokeDashoffset = 340 * (1 - easeInOut(p1));
-    var w1 = clamp01((t - 1.15) / 0.7);
-    el.s1Word.style.opacity = w1;
-    el.s1Word.style.transform = "translateY(" + (26 * (1 - easeOut(w1))) + "px)";
-    var u1 = clamp01((t - 1.5) / 0.7);
-    el.s1Sub.style.opacity = u1 * 0.9;
-    el.s1Sub.style.transform = "translateY(" + (18 * (1 - easeOut(u1))) + "px)";
-
-    // --- Szenen 2 bis 4: Text von links, Handy von rechts, dann langsamer Zoom
-    [["s2", el.s2Shot], ["s3", el.s3Shot], ["s4", el.s4Shot]].forEach(function (pair) {
-      var scene = SCENES.filter(function (s) { return s.id === pair[0]; })[0];
-      var node = el[scene.id];
-      var copy = node.querySelector(".copy");
-      var p = progress(scene, t, 0.9);
-      var span = (t - scene.start) / (scene.end - scene.start);
-      copy.style.transform = "translateY(" + (30 * (1 - p)) + "px)";
-      copy.style.opacity = p;
-      pair[1].style.transform =
-        "translateX(" + (90 * (1 - p)) + "px) scale(" + (0.965 + 0.05 * clamp01(span)) + ")";
-      pair[1].style.opacity = p;
-    });
-
-    // --- Szene 5: Endkarte, Teil fuer Teil
-    var s5 = SCENES[4];
-    var i5 = progress(s5, t, 0.8);
-    el.s5Icon.style.opacity = i5;
-    el.s5Icon.style.transform = "scale(" + (0.86 + 0.14 * i5) + ")";
-    var stack = [[el.s5Word, 0.35], [el.s5Cta, 0.6], [el.s5Url, 0.9], [el.s5Facts, 1.1]];
-    stack.forEach(function (item) {
-      var p = easeOut((t - s5.start - item[1]) / 0.6);
-      item[0].style.opacity = p;
-      item[0].style.transform = "translateY(" + (22 * (1 - p)) + "px)";
+      if (s.kind === "text") {
+        reveal(node, tl, [[".kicker", s.kickerAt || 0.0], [".head", s.headAt || 0.1], [".sub", s.subAt || 0.45]]);
+      } else if (s.kind === "brand") {
+        var p1 = clamp01((tl - 0.1) / 1.2);
+        node.querySelector(".markPath").style.strokeDashoffset = 340 * (1 - easeInOut(p1));
+        reveal(node, tl, [[".wordmark", 1.0], [".sub", 1.35]]);
+      } else if (s.kind === "demo") {
+        reveal(node, tl, [[".kicker", s.kickerAt || 0.0], [".head", s.headAt || 0.1], [".sub", s.subAt || 0.4]]);
+        var slot = node.querySelector(".phone-slot");
+        var p = s.enter === false ? 1 : easeOut(tl / 0.9);
+        slot.style.opacity = p;
+        slot.style.transform = format === "wide"
+          ? "translateX(" + (80 * (1 - p)) + "px)"
+          : "translateY(" + (60 * (1 - p)) + "px)";
+        s.phone(tl, s.phoneApi);
+      } else if (s.kind === "cta") {
+        var i5 = easeOut(tl / 0.8);
+        var icon = node.querySelector(".cta-icon");
+        icon.style.opacity = i5;
+        icon.style.transform = "scale(" + (0.86 + 0.14 * i5) + ")";
+        reveal(node, tl, [[".wordmark", 0.35], [".cta-btn", 0.6], [".cta-url", 0.9], [".cta-facts", 1.1]]);
+      }
     });
   };
 
-  window.setFormat = function (format) {
-    document.getElementById("stage").dataset.format = format;
+  window.setFormat = function (f) {
+    format = f;
+    document.getElementById("stage").dataset.format = f;
   };
 
-  window.adDuration = DURATION;
-  window.setTime(0);
+  /* ------------------------------ Aufbau ------------------------------ */
+
+  function preload(names) {
+    return Promise.all(names.map(function (name) {
+      return new Promise(function (resolve) {
+        var img = new Image();
+        img.onload = img.onerror = function () { IMG[name] = img; resolve(); };
+        img.src = src(name);
+      });
+    }));
+  }
+
+  window.adReady = fetch("captures/manifest.json").then(function (r) { return r.json(); }).then(function (m) {
+    M = m;
+    var names = [];
+    Object.keys(m.layered).forEach(function (route) { names.push(route + "-top", route + "-body", route + "-nav"); });
+    Object.keys(m.frames).forEach(function (key) {
+      var v = m.frames[key];
+      (Array.isArray(v) ? v : [v]).forEach(function (n) { names.push(n); });
+    });
+    SCENES = window.defineScenes(m);
+    build();
+    window.adDuration = SCENES[SCENES.length - 1].end;
+    return preload(names);
+  }).then(function () {
+    window.setTime(0);
+    return true;
+  });
 })();
+</script>
+
+<script>
+/* =====================================================================
+   Das Storyboard. Zeiten in Sekunden, lueckenlos mit 0,4 s Ueberblendung.
+   Jede Demo-Szene bekommt eine Funktion phone(tl, ph), die das Handy zum
+   lokalen Zeitpunkt tl stellt.
+   ===================================================================== */
+window.defineScenes = function (M) {
+  "use strict";
+  function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+  function easeInOut(p) { p = clamp01(p); return p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2; }
+  var R = M.rects || {};
+  var F = M.frames;
+
+  /** Bildfolge: Bild k zum Anteil p (0..1). */
+  function frameAt(list, p) { return list[Math.min(list.length - 1, Math.floor(clamp01(p) * list.length))]; }
+  /** Bildfolge mit Zeitstempeln: das letzte Bild, das zur Zeit t schon da war. */
+  function frameByTime(list, times, t) {
+    var k = 0;
+    for (var i = 0; i < times.length; i++) { if (times[i] <= t) k = i; else break; }
+    return list[k];
+  }
+  var RUN_REAL = M.runningTimes && M.runningTimes.length ? M.runningTimes[M.runningTimes.length - 1] : 5;
+
+  return [
+    /* ----------------------------- Einstieg ----------------------------- */
+    { id: "o1", kind: "text", start: 0.0, end: 2.8,
+      head: "Dir ist <red>langweilig?</red>" },
+
+    { id: "o2", kind: "text", start: 2.6, end: 5.6,
+      head: "Du willst was <grad>Gutes</grad> erleben.", sub: "Dann jetzt hier:" },
+
+    { id: "brand", kind: "brand", start: 5.4, end: 9.0,
+      sub: "Die App von JARO & DELTA - Gaming, Redstone, Musik, Projekte. Das sind wir." },
+
+    /* ------------------------ Die App, Schritt fuer Schritt ------------------------ */
+    { id: "d-start", kind: "demo", start: 8.8, end: 13.6,
+      kicker: "So sieht sie aus", head: "Alles unten im Menü.", sub: "Start, RSL AI, Server, Einstellungen, Info - und oben rechts dein Konto.",
+      phone: function (tl, ph) {
+        var scroll = ph.maxScroll("start") * easeInOut((tl - 0.9) / 3.0);
+        ph.layered("start", scroll);
+        ph.tap(R.navAi, (tl - 4.1) / 0.55);
+      } },
+
+    { id: "d-type", kind: "demo", start: 13.4, end: 18.6, enter: false,
+      kicker: "RSL AI · Schritt 1", head: "Tipp, was du sehen willst.", sub: "Ein Satz reicht - oder ein ganzes Drehbuch.",
+      phone: function (tl, ph) {
+        var p = (tl - 0.8) / 3.2;
+        ph.full(p >= 1 ? F.typed : frameAt(F.typing, p));
+        ph.tap(R.prompt, (tl - 0.3) / 0.5);
+      } },
+
+    { id: "d-render", kind: "demo", start: 18.4, end: 24.8, enter: false,
+      kicker: "RSL AI · Schritt 2", head: "Tipp auf <red>Video erzeugen.</red>", sub: "Der Clip entsteht auf deinem Handy - nichts wird hochgeladen.",
+      phone: function (tl, ph) {
+        var goScroll = M.aiGoScroll || 0;
+        if (tl < 1.7) {
+          // vom Satz zum Knopf scrollen, dann sanft ins Vollbild derselben Stelle
+          var sc = goScroll * easeInOut((tl - 0.3) / 1.1);
+          ph.layered("ai-typed", sc, F.ready, (tl - 1.4) / 0.3);
+        } else if (tl < 2.0) {
+          ph.full(F.ready);
+        } else if (tl < 5.0) {
+          ph.full(frameByTime(F.running, M.runningTimes, (tl - 2.0) / 3.0 * RUN_REAL));
+        } else {
+          ph.full(F.running[F.running.length - 1], F.result, (tl - 5.0) / 0.5);
+        }
+        ph.tap(R.goScrolled, (tl - 1.75) / 0.55);
+      } },
+
+    { id: "d-server", kind: "demo", start: 24.6, end: 29.4, enter: false,
+      kicker: "Server", head: "Wer ist <red>online?</red>", sub: "Live vom Minecraft-Server: Spieler, Ping, Version.",
+      phone: function (tl, ph) {
+        if (tl < 0.9) ph.full(F.start);
+        else if (tl < 2.4) ph.full(F.serverWait);
+        else ph.full(F.serverWait, F.serverDone, (tl - 2.4) / 0.45);
+        ph.tap(R.navServer, (tl - 0.45) / 0.55);
+      } },
+
+    { id: "d-konto", kind: "demo", start: 29.2, end: 34.8, enter: false,
+      kicker: "Konto", head: "Minecraft <red>dabei?</red>", sub: "Mit Microsoft anmelden, Code eingeben - fertig. Kein Passwort in der App.",
+      phone: function (tl, ph) {
+        if (tl < 1.4) ph.full(F.kontoOut);
+        else if (tl < 1.8) ph.full(F.kontoOut, F.kontoCode, (tl - 1.4) / 0.4);
+        else if (tl < 3.8) ph.full(F.kontoCode);
+        else ph.full(F.kontoCode, F.kontoIn, (tl - 3.8) / 0.5);
+        ph.tap(R.signin, (tl - 1.0) / 0.55);
+      } },
+
+    /* ------------------------------- Aufruf ------------------------------- */
+    { id: "cta", kind: "cta", start: 34.6, end: 38.8,
+      button: "Installieren",
+      url: "thejjbcraft.github.io/RSL/apps/store/",
+      facts: "Kostenlos · Android 7.0+ · unter 400 KB · keine Werbung" }
+  ];
+};
 </script>
 </body>
 </html>

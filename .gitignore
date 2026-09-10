@@ -22,3 +22,6 @@ android/**/local.properties
 # Werbeclips entstehen aus tools/make-rsl-ad.mjs und werden erst nach dem
 # fertigen Render eingecheckt - halb geschriebene Dateien bleiben draussen.
 assets/video/*.tmp
+
+# Aufnahmen fuer den Werbeclip entstehen aus tools/rsl-ad/capture.mjs
+tools/rsl-ad/captures/

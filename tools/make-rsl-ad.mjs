@@ -1,15 +1,20 @@
 /**
  * Baut den Werbeclip fuer die RSL-App als MP4.
  *
- * Ablauf: tools/rsl-ad/ad.html in einem Chromium oeffnen, Bild fuer Bild
- * ueber setTime(t) stellen, jedes Bild abfotografieren und direkt in ffmpeg
- * schieben. Nichts wird zwischengespeichert, und weil die Zeit gesetzt und
- * nicht gemessen wird, ist jedes Bild genau dort, wo es hingehoert.
+ * Ablauf: Fehlen die Aufnahmen der echten App (tools/rsl-ad/captures),
+ * nimmt tools/rsl-ad/capture.mjs sie zuerst auf. Dann wird tools/rsl-ad/ad.html
+ * in einem Chromium geoeffnet, Bild fuer Bild ueber setTime(t) gestellt, jedes
+ * Bild abfotografiert und direkt in ffmpeg geschoben. Nichts wird
+ * zwischengespeichert, und weil die Zeit gesetzt und nicht gemessen wird, ist
+ * jedes Bild genau dort, wo es hingehoert.
  *
  * Aufruf:
  *   node tools/make-rsl-ad.mjs                 # beide Formate
  *   node tools/make-rsl-ad.mjs wide            # nur 16:9
  *   node tools/make-rsl-ad.mjs tall            # nur 9:16
+ *   node tools/make-rsl-ad.mjs --capture       # Aufnahmen erneuern, dann bauen
+ *
+ * Braucht die gebaute App unter apps/rsl-mobile/dist (npm run build:rsl-mobile).
  *
  * Braucht ein ffmpeg mit libx264. Wird eines im Pfad gefunden, wird das
  * genommen; sonst das aus dem npm-Paket @ffmpeg-installer/ffmpeg.
@@ -22,6 +27,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const repo = join(dirname(fileURLToPath(import.meta.url)), "..");
+const AD_DIR = join(repo, "tools", "rsl-ad");
 const OUT_DIR = join(repo, "assets", "video");
 const FPS = 30;
 
@@ -62,6 +68,18 @@ function findFfmpeg() {
   process.exit(1);
 }
 
+/** Die Aufnahmen der echten App - bei Bedarf frisch machen. */
+function ensureCaptures(force) {
+  const manifest = join(AD_DIR, "captures", "manifest.json");
+  if (!force && existsSync(manifest)) return;
+  console.log(force ? "Aufnahmen werden erneuert ..." : "Keine Aufnahmen gefunden - die App wird zuerst aufgenommen ...");
+  const run = spawnSync(process.execPath, [join(AD_DIR, "capture.mjs")], { stdio: "inherit" });
+  if (run.status !== 0 || !existsSync(manifest)) {
+    console.error("Aufnahme fehlgeschlagen.");
+    process.exit(1);
+  }
+}
+
 function serve() {
   const server = createServer((request, response) => {
     const path = normalize(decodeURIComponent(new URL(request.url, "http://x").pathname));
@@ -89,6 +107,8 @@ async function render(browser, ffmpeg, name) {
   });
 
   await page.goto(`${base}/tools/rsl-ad/ad.html`, { waitUntil: "networkidle" });
+  // Erst wenn alle Aufnahmen geladen sind, stimmt jedes Bild.
+  await page.evaluate(() => window.adReady);
   await page.evaluate((f) => window.setFormat(f), name);
   const duration = await page.evaluate(() => window.adDuration);
   const frames = Math.round(duration * FPS);
@@ -134,6 +154,7 @@ const names = wanted.length ? wanted : Object.keys(FORMATS);
 
 mkdirSync(OUT_DIR, { recursive: true });
 const ffmpeg = findFfmpeg();
+ensureCaptures(process.argv.includes("--capture"));
 const server = await serve();
 const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
