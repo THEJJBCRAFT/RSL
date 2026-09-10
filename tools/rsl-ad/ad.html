@@ -46,9 +46,9 @@
 
   /* Hintergrundlichter, driften ueber die ganze Laenge. */
   .glow { position: absolute; border-radius: 50%; filter: blur(90px); will-change: transform; }
-  #glowRed { width: 60vw; height: 60vw; left: -14vw; bottom: -22vw; background: rgba(255, 50, 72, .34); }
+  #glowRed { width: 60vw; height: 60vw; left: -14vw; bottom: -22vw; background: rgba(255, 50, 72, .27); }
   #glowViolet { width: 46vw; height: 46vw; right: -12vw; top: -18vw; background: rgba(139, 92, 246, .26); }
-  [data-format="tall"] #glowRed { width: 105vw; height: 105vw; left: -30vw; bottom: -34vw; background: rgba(255, 50, 72, .3); }
+  [data-format="tall"] #glowRed { width: 105vw; height: 105vw; left: -30vw; bottom: -34vw; background: rgba(255, 50, 72, .25); }
   [data-format="tall"] #glowViolet { width: 85vw; height: 85vw; right: -26vw; top: -26vw; background: rgba(139, 92, 246, .24); }
   .vignette { position: absolute; inset: 0; background: radial-gradient(145% 115% at 50% 46%, transparent 48%, rgba(0, 0, 0, .48) 100%); }
   .grain {
@@ -81,8 +81,8 @@
     justify-items: center;
     text-align: center;
     align-content: start;
-    gap: 46px;
-    padding: 150px 80px 0;
+    gap: 40px;
+    padding: 130px 80px 0;
   }
 
   .kicker {
@@ -111,6 +111,34 @@
   [data-format="tall"] .sub { font-size: 38px; max-width: 24ch; margin-inline: auto; }
   [data-format="tall"] .scene[data-kind="text"] .sub { font-size: 44px; max-width: 22ch; }
 
+  /* ------------------------------ Vorspann ------------------------------ */
+
+  .scene[data-kind="epic"] {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    padding: 0 8vw;
+  }
+  .epic-title {
+    font-weight: 900; text-transform: uppercase; line-height: 1.06;
+    color: #fff;
+    will-change: transform, opacity, letter-spacing;
+  }
+  .epic-line {
+    height: 3px; margin: 38px auto 0; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, var(--red) 30%, var(--aqua) 70%, transparent);
+    will-change: width, opacity;
+  }
+  [data-format="wide"] .epic-title { font-size: 100px; white-space: nowrap; }
+  [data-format="tall"] .epic-title { font-size: 96px; }
+  .scene.present .head { white-space: nowrap; }
+  [data-format="tall"] .scene[data-kind="text"].present .head { font-size: 84px; }
+  /* "Bald erhaeltlich": ruhiger und kleiner als die grossen Zeilen */
+  .scene.soon .head { font-weight: 700; letter-spacing: .03em; }
+  [data-format="wide"] .scene[data-kind="text"].soon .head { font-size: 84px; max-width: none; }
+  [data-format="tall"] .scene[data-kind="text"].soon .head { font-size: 76px; }
+  .dots { display: inline-block; min-width: 1.1em; text-align: left; }
+
   /* ------------------------------- Handy ------------------------------- */
 
   .phone-slot { will-change: transform, opacity; }
@@ -126,7 +154,7 @@
     transform-origin: center;
   }
   [data-format="wide"] .phone { transform: scale(1.02); }
-  [data-format="tall"] .phone { transform: scale(1.28); transform-origin: top center; }
+  [data-format="tall"] .phone { transform: scale(1.32); transform-origin: top center; }
   .ph-screen {
     position: relative;
     width: var(--phone-w); height: var(--phone-h);
@@ -221,10 +249,12 @@
   function rich(s) {
     return esc(s)
       .replace(/&lt;red&gt;/g, '<span class="red">').replace(/&lt;\/red&gt;/g, "</span>")
-      .replace(/&lt;grad&gt;/g, '<span class="grad">').replace(/&lt;\/grad&gt;/g, "</span>");
+      .replace(/&lt;grad&gt;/g, '<span class="grad">').replace(/&lt;\/grad&gt;/g, "</span>")
+      .replace(/\n/g, "<br>");
   }
 
   var FADE = 0.4;
+  var SHADE_FROM = 1.0, SHADE_TO = 5.4;   // Lichter kommen im Vorspann langsam
   var M = null;      // manifest der Aufnahmen
   var IMG = {};      // vorgeladene Bilder
   function src(name) { return "captures/" + name + ".png"; }
@@ -298,11 +328,17 @@
 
   function textScene(s) {
     var n = document.createElement("div");
-    n.className = "scene"; n.dataset.kind = "text"; n.id = s.id;
+    n.className = "scene" + (s.cls ? " " + s.cls : ""); n.dataset.kind = "text"; n.id = s.id;
     n.innerHTML = '<div>' +
       (s.kicker ? '<span class="kicker">' + esc(s.kicker) + "</span>" : "") +
-      '<h2 class="head">' + rich(s.head) + "</h2>" +
+      '<h2 class="head">' + rich(s.head) + (s.dots ? '<span class="dots"></span>' : "") + "</h2>" +
       (s.sub ? '<p class="sub">' + rich(s.sub) + "</p>" : "") + "</div>";
+    return n;
+  }
+  function epicScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "epic"; n.id = s.id;
+    n.innerHTML = '<div><h2 class="epic-title">' + esc(s.head) + '</h2><div class="epic-line"></div></div>';
     return n;
   }
   function brandScene(s) {
@@ -343,8 +379,8 @@
     var host = document.getElementById("scenes");
     host.innerHTML = "";
     SCENES.forEach(function (s) {
-      var n = s.kind === "text" ? textScene(s) : s.kind === "brand" ? brandScene(s)
-        : s.kind === "demo" ? demoScene(s) : ctaScene(s);
+      var n = s.kind === "text" ? textScene(s) : s.kind === "epic" ? epicScene(s)
+        : s.kind === "brand" ? brandScene(s) : s.kind === "demo" ? demoScene(s) : ctaScene(s);
       host.appendChild(n);
       nodes[s.id] = n;
     });
@@ -362,7 +398,8 @@
   }
 
   function alphaOf(s, t) {
-    return clamp01((t - s.start) / FADE) * clamp01((s.end - t) / FADE);
+    var last = s === SCENES[SCENES.length - 1];   // die Endkarte bleibt bis zum letzten Bild stehen
+    return clamp01((t - s.start) / FADE) * (last ? 1 : clamp01((s.end - t) / FADE));
   }
 
   /* --------------------------- Die Bild-Uhr --------------------------- */
@@ -373,8 +410,12 @@
     var total = SCENES[SCENES.length - 1].end;
     t = Math.max(0, Math.min(total, t));
     var drift = t / total;
-    document.getElementById("glowRed").style.transform = "translate(" + (drift * 140) + "px," + (-drift * 80) + "px)";
-    document.getElementById("glowViolet").style.transform = "translate(" + (-drift * 120) + "px," + (drift * 100) + "px)";
+    // Vorspann: erst Schwarz, dann kommen die Lichter langsam aus dem Dunkel.
+    var shade = easeInOut((t - SHADE_FROM) / (SHADE_TO - SHADE_FROM));
+    var glowRed = document.getElementById("glowRed"), glowViolet = document.getElementById("glowViolet");
+    glowRed.style.opacity = shade; glowViolet.style.opacity = shade;
+    glowRed.style.transform = "translate(" + (drift * 140) + "px," + (-drift * 80) + "px)";
+    glowViolet.style.transform = "translate(" + (-drift * 120) + "px," + (drift * 100) + "px)";
 
     SCENES.forEach(function (s) {
       var node = nodes[s.id];
@@ -386,6 +427,26 @@
 
       if (s.kind === "text") {
         reveal(node, tl, [[".kicker", s.kickerAt || 0.0], [".head", s.headAt || 0.1], [".sub", s.subAt || 0.45]]);
+        if (s.dots) {
+          // "Wir praesentieren" - die drei Punkte kommen einzeln
+          var k = tl < s.dotsAt ? 0 : Math.min(3, Math.floor((tl - s.dotsAt) / 0.4) + 1);
+          node.querySelector(".dots").textContent = " " + "...".slice(0, k);
+        }
+      } else if (s.kind === "epic") {
+        // Grosser Auftritt: die Buchstaben ruecken zusammen, der Text kommt aus der Tiefe,
+        // ein rotes Leuchten atmet, darunter waechst eine Linie.
+        var pe = easeOut((tl - 0.1) / 1.8);
+        var title = node.querySelector(".epic-title");
+        title.style.opacity = pe;
+        title.style.letterSpacing = (0.44 - 0.14 * pe) + "em";
+        title.style.textIndent = (0.44 - 0.14 * pe) + "em";
+        title.style.transform = "scale(" + (1.10 - 0.10 * pe) + ")";
+        var pulse = 0.5 + 0.2 * Math.sin(tl * 1.7);
+        title.style.textShadow = "0 0 34px rgba(255,50,72," + (pulse * pe).toFixed(3) + "), 0 0 110px rgba(255,50,72," + (0.38 * pe).toFixed(3) + ")";
+        var line = node.querySelector(".epic-line");
+        var q = easeOut((tl - 1.0) / 1.4);
+        line.style.width = (q * 46) + "%";
+        line.style.opacity = q;
       } else if (s.kind === "brand") {
         var p1 = clamp01((tl - 0.1) / 1.2);
         node.querySelector(".markPath").style.strokeDashoffset = 340 * (1 - easeInOut(p1));
@@ -468,36 +529,45 @@ window.defineScenes = function (M) {
   }
   var RUN_REAL = M.runningTimes && M.runningTimes.length ? M.runningTimes[M.runningTimes.length - 1] : 5;
 
-  return [
-    /* ----------------------------- Einstieg ----------------------------- */
-    { id: "o1", kind: "text", start: 0.0, end: 2.8,
-      head: "Dir ist <red>langweilig?</red>" },
+  /* ------------------------------ Vorspann ------------------------------ */
+  var intro = [
+    // 0 - 1,4 s: Schwarz. Ab 1 s kommen die Lichter langsam (siehe SHADE_FROM/SHADE_TO).
+    { id: "i-labs", kind: "epic", start: 1.6, end: 6.6, head: "Redstone Labs" },
+    { id: "i-soon", kind: "text", cls: "soon", start: 6.4, end: 9.4, headAt: 0.2, head: "Bald möglich und erhältlich." },
+    { id: "i-present", kind: "text", cls: "present", start: 9.2, end: 12.6, headAt: 0.2, head: "Wir präsentieren", dots: true, dotsAt: 1.0 }
+  ];
+  var T0 = 12.4;   // hier beginnt die eigentliche Werbung
 
-    { id: "o2", kind: "text", start: 2.6, end: 5.6,
+  var ad = [
+    /* ----------------------------- Einstieg ----------------------------- */
+    { id: "o1", kind: "text", start: 0.0, end: 2.6,
+      head: "Dir ist <red>langweilig?</red>", sub: "Schon wieder. Kennen wir." },
+
+    { id: "o2", kind: "text", start: 2.4, end: 5.2,
       head: "Du willst was <grad>Gutes</grad> erleben.", sub: "Dann jetzt hier:" },
 
-    { id: "brand", kind: "brand", start: 5.4, end: 9.0,
-      sub: "Die App von JARO & DELTA - Gaming, Redstone, Musik, Projekte. Das sind wir." },
+    { id: "brand", kind: "brand", start: 5.0, end: 8.8,
+      sub: "Die App von JARO & DELTA. Gaming, Redstone, Musik, Projekte - das sind wir." },
 
     /* ------------------------ Die App, Schritt fuer Schritt ------------------------ */
-    { id: "d-start", kind: "demo", start: 8.8, end: 13.6,
-      kicker: "So sieht sie aus", head: "Alles unten im Menü.", sub: "Start, RSL AI, Server, Einstellungen, Info - und oben rechts dein Konto.",
+    { id: "d-start", kind: "demo", start: 8.6, end: 13.6, subAt: 0.5,
+      kicker: "Drei Dinge, ein Handy", head: "Erst mal umsehen.", sub: "Unten: Start, RSL AI, Server, Einstellungen, Info. Oben rechts: dein Konto.",
       phone: function (tl, ph) {
         var scroll = ph.maxScroll("start") * easeInOut((tl - 0.9) / 3.0);
         ph.layered("start", scroll);
-        ph.tap(R.navAi, (tl - 4.1) / 0.55);
+        ph.tap(R.navAi, (tl - 4.2) / 0.55);
       } },
 
-    { id: "d-type", kind: "demo", start: 13.4, end: 18.6, enter: false,
-      kicker: "RSL AI · Schritt 1", head: "Tipp, was du sehen willst.", sub: "Ein Satz reicht - oder ein ganzes Drehbuch.",
+    { id: "d-type", kind: "demo", start: 13.4, end: 18.8, enter: false,
+      kicker: "RSL AI · Schritt 1", head: "Tipp, was du sehen willst.", sub: "Ein Satz reicht. Oder ein Drehbuch. Chips antippen geht auch.",
       phone: function (tl, ph) {
-        var p = (tl - 0.8) / 3.2;
+        var p = (tl - 0.8) / 3.2;   // Tempo der Aufnahme
         ph.full(p >= 1 ? F.typed : frameAt(F.typing, p));
         ph.tap(R.prompt, (tl - 0.3) / 0.5);
       } },
 
-    { id: "d-render", kind: "demo", start: 18.4, end: 24.8, enter: false,
-      kicker: "RSL AI · Schritt 2", head: "Tipp auf <red>Video erzeugen.</red>", sub: "Der Clip entsteht auf deinem Handy - nichts wird hochgeladen.",
+    { id: "d-render", kind: "demo", start: 18.6, end: 25.6, enter: false,
+      kicker: "RSL AI · Schritt 2", head: "Dann: <red>Video erzeugen.</red>", sub: "Läuft komplett auf deinem Handy - nichts wird hochgeladen.",
       phone: function (tl, ph) {
         var goScroll = M.aiGoScroll || 0;
         if (tl < 1.7) {
@@ -514,31 +584,36 @@ window.defineScenes = function (M) {
         ph.tap(R.goScrolled, (tl - 1.75) / 0.55);
       } },
 
-    { id: "d-server", kind: "demo", start: 24.6, end: 29.4, enter: false,
-      kicker: "Server", head: "Wer ist <red>online?</red>", sub: "Live vom Minecraft-Server: Spieler, Ping, Version.",
+    { id: "d-server", kind: "demo", start: 25.4, end: 30.4, enter: false,
+      kicker: "Server", head: "Wer ist <red>online?</red>", sub: "Server antippen - Spieler, Ping und Version live vom Minecraft-Server.",
       phone: function (tl, ph) {
-        if (tl < 0.9) ph.full(F.start);
+        if (tl < 0.9) ph.full(F.result);
         else if (tl < 2.4) ph.full(F.serverWait);
         else ph.full(F.serverWait, F.serverDone, (tl - 2.4) / 0.45);
         ph.tap(R.navServer, (tl - 0.45) / 0.55);
       } },
 
-    { id: "d-konto", kind: "demo", start: 29.2, end: 34.8, enter: false,
-      kicker: "Konto", head: "Minecraft <red>dabei?</red>", sub: "Mit Microsoft anmelden, Code eingeben - fertig. Kein Passwort in der App.",
+    { id: "d-konto", kind: "demo", start: 30.2, end: 36.6, enter: false,
+      kicker: "Konto", head: "Minecraft <red>dabei?</red>", sub: "Oben rechts anmelden, Code im Browser eingeben. Kein Passwort in der App.",
       phone: function (tl, ph) {
-        if (tl < 1.4) ph.full(F.kontoOut);
-        else if (tl < 1.8) ph.full(F.kontoOut, F.kontoCode, (tl - 1.4) / 0.4);
-        else if (tl < 3.8) ph.full(F.kontoCode);
-        else ph.full(F.kontoCode, F.kontoIn, (tl - 3.8) / 0.5);
-        ph.tap(R.signin, (tl - 1.0) / 0.55);
+        if (tl < 0.7) ph.full(F.serverDone);
+        else if (tl < 1.1) ph.full(F.serverDone, F.kontoOut, (tl - 0.7) / 0.4);
+        else if (tl < 2.1) ph.full(F.kontoOut);
+        else if (tl < 2.5) ph.full(F.kontoOut, F.kontoCode, (tl - 2.1) / 0.4);
+        else if (tl < 4.5) ph.full(F.kontoCode);
+        else ph.full(F.kontoCode, F.kontoIn, (tl - 4.5) / 0.5);
+        if (tl < 1.2) ph.tap(R.acctBtn, (tl - 0.25) / 0.55);
+        else ph.tap(R.signin, (tl - 1.7) / 0.55);
       } },
 
     /* ------------------------------- Aufruf ------------------------------- */
-    { id: "cta", kind: "cta", start: 34.6, end: 38.8,
+    { id: "cta", kind: "cta", start: 36.4, end: 40.8,
       button: "Installieren",
       url: "thejjbcraft.github.io/RSL/apps/store/",
       facts: "Kostenlos · Android 7.0+ · unter 400 KB · keine Werbung" }
   ];
+  ad.forEach(function (s) { s.start += T0; s.end += T0; });
+  return intro.concat(ad);
 };
 </script>
 </body>
