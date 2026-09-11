@@ -139,6 +139,39 @@
   [data-format="tall"] .scene[data-kind="text"].soon .head { font-size: 76px; }
   .dots { display: inline-block; min-width: 1.1em; text-align: left; white-space: pre; }
 
+  /* ----------------------------- Webseite ----------------------------- */
+
+  .scene[data-kind="web"] {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+    align-content: start;
+  }
+  [data-format="wide"] .scene[data-kind="web"] { padding: 52px 0 0; gap: 24px; }
+  [data-format="tall"] .scene[data-kind="web"] { padding: 150px 80px 0; gap: 46px; }
+  [data-format="wide"] .scene[data-kind="web"] .head { font-size: 62px; }
+  [data-format="wide"] .scene[data-kind="web"] .sub { font-size: 28px; margin-top: 12px; max-width: none; }
+  [data-format="wide"] .scene[data-kind="web"] .phone-slot { display: none; }
+  [data-format="tall"] .scene[data-kind="web"] .browser-slot { display: none; }
+
+  .browser-slot { will-change: transform, opacity; }
+  .browser {
+    width: 1440px; border-radius: 16px; overflow: hidden;
+    background: #0b0d12; border: 1px solid rgba(255, 255, 255, .14);
+    box-shadow: 0 60px 120px -40px rgba(0, 0, 0, .95);
+  }
+  .br-bar {
+    display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 16px;
+    background: #14161d; border-bottom: 1px solid rgba(255, 255, 255, .08);
+  }
+  .br-dot { width: 12px; height: 12px; border-radius: 50%; background: #3a3f4b; }
+  .br-url {
+    flex: 1; margin-left: 12px; height: 28px; padding: 0 14px; border-radius: 8px;
+    background: #0b0d12; color: var(--muted); font-size: 15px; line-height: 28px; text-align: left;
+  }
+  .br-view { position: relative; width: 1440px; height: 700px; overflow: hidden; background: #05070b; }
+  .br-view img { position: absolute; left: 0; top: 0; width: 1440px; display: block; will-change: transform; }
+
   /* ------------------------------- Handy ------------------------------- */
 
   .phone-slot { will-change: transform, opacity; }
@@ -165,6 +198,9 @@
   .ph-full, .ph-layer { position: absolute; inset: 0; }
   .ph-full { width: 100%; height: 100%; display: block; }
   .ph-a { z-index: 1; }
+  .ph-page { position: absolute; left: 0; top: 0; display: none; z-index: 1; will-change: transform; }
+  .is-page .ph-page { display: block; }
+  .is-page .ph-a { visibility: hidden; }
   .ph-layer { display: none; z-index: 2; }
   .ph-layer.is-on { display: block; }
   .ph-b { opacity: 0; z-index: 3; }
@@ -267,6 +303,7 @@
     el.innerHTML =
       '<div class="ph-screen">' +
         '<img class="ph-full ph-a" alt="">' +
+        '<img class="ph-page" alt="">' +
         '<div class="ph-layer"><img class="ph-top" alt=""><div class="ph-bodywrap"><img class="ph-body" alt=""></div><img class="ph-nav" alt=""></div>' +
         '<img class="ph-full ph-b" alt="">' +
         '<div class="ph-tap"></div>' +
@@ -275,6 +312,8 @@
     var layer = el.querySelector(".ph-layer");
     var top = el.querySelector(".ph-top"), body = el.querySelector(".ph-body"), nav = el.querySelector(".ph-nav");
     var wrap = el.querySelector(".ph-bodywrap");
+    var pageImg = el.querySelector(".ph-page");
+    var screen = el.querySelector(".ph-screen");
     var tap = el.querySelector(".ph-tap");
     var cur = { a: "", b: "", layered: "" };
 
@@ -288,13 +327,25 @@
       /** Ein Vollbild, optional mit Ueberblendung zu einem zweiten (mix 0..1). */
       full: function (nameA, nameB, mix) {
         layer.classList.remove("is-on");
+        screen.classList.remove("is-page");
         set(a, nameA);
         if (nameB) { set(b, nameB); b.style.opacity = clamp01(mix || 0); } else { b.style.opacity = 0; }
       },
       /** Lange Ansicht in Lagen: Kopfzeile und Menue fest, Inhalt scrollt.
        *  Optional blendet ein Vollbild (nameB, mix 0..1) darueber ein. */
+      /** Eine ganze Seite (Webseite) als Bild, um scroll Pixel nach oben geschoben. */
+      page: function (info, scroll) {
+        screen.classList.add("is-page");
+        layer.classList.remove("is-on");
+        b.style.opacity = 0;
+        set(pageImg, info.file);
+        var img = IMG[info.file];
+        pageImg.style.width = (img && img.naturalWidth ? img.naturalWidth / info.scale : info.width) + "px";
+        pageImg.style.transform = "translateY(" + (-Math.round(scroll)) + "px)";
+      },
       layered: function (route, scroll, nameB, mix) {
         var L = M.layered[route];
+        screen.classList.remove("is-page");
         layer.classList.add("is-on");
         set(top, route + "-top"); set(body, route + "-body"); set(nav, route + "-nav");
         top.style.height = L.top + "px";
@@ -363,6 +414,37 @@
     s.phoneApi = phone;
     return n;
   }
+  function webScene(s) {
+    var n = document.createElement("div");
+    n.className = "scene"; n.dataset.kind = "web"; n.id = s.id;
+    n.innerHTML = '<div class="copy">' +
+      (s.kicker ? '<span class="kicker">' + esc(s.kicker) + "</span>" : "") +
+      '<h2 class="head">' + rich(s.head) + "</h2>" +
+      (s.sub ? '<p class="sub">' + rich(s.sub) + "</p>" : "") + "</div>" +
+      '<div class="browser-slot"><div class="browser"><div class="br-bar"><span class="br-dot"></span><span class="br-dot"></span><span class="br-dot"></span>' +
+      '<span class="br-url">' + esc(s.url || "") + '</span></div><div class="br-view"><img alt=""></div></div></div>' +
+      '<div class="phone-slot"></div>';
+    var phone = createPhone();
+    n.querySelector(".phone-slot").appendChild(phone.el);
+    var view = n.querySelector(".br-view img");
+    var cur = "";
+    // Ein Geraet fuer beide Formate: im Querformat das Browserfenster, im Hochformat das Handy.
+    s.device = {
+      viewport: function () { return format === "wide" ? 700 : M.height; },
+      info: function (key) { return M.site[format][key]; },
+      maxScroll: function (key) { var i = M.site[format][key]; return Math.max(0, i.height - this.viewport()); },
+      scroll: function (key, px) {
+        var i = M.site[format][key];
+        if (format === "wide") {
+          if (cur !== i.file) { view.setAttribute("src", src(i.file)); cur = i.file; }
+          view.style.transform = "translateY(" + (-Math.round(px)) + "px)";
+        } else {
+          phone.page(i, px);
+        }
+      }
+    };
+    return n;
+  }
   function ctaScene(s) {
     var n = document.createElement("div");
     n.className = "scene"; n.dataset.kind = "cta"; n.id = s.id;
@@ -380,7 +462,8 @@
     host.innerHTML = "";
     SCENES.forEach(function (s) {
       var n = s.kind === "text" ? textScene(s) : s.kind === "epic" ? epicScene(s)
-        : s.kind === "brand" ? brandScene(s) : s.kind === "demo" ? demoScene(s) : ctaScene(s);
+        : s.kind === "brand" ? brandScene(s) : s.kind === "demo" ? demoScene(s)
+        : s.kind === "web" ? webScene(s) : ctaScene(s);
       host.appendChild(n);
       nodes[s.id] = n;
     });
@@ -431,7 +514,7 @@
       node.style.visibility = a > 0.001 ? "visible" : "hidden";
       if (a <= 0.001) return;
       var tl = t - s.start;
-      var copy = s.kind === "demo" ? node.querySelector(".copy") : node.firstElementChild;
+      var copy = (s.kind === "demo" || s.kind === "web") ? node.querySelector(".copy") : node.firstElementChild;
       copy.style.opacity = Math.min(1, textAlphaOf(s, t) / a);
 
       if (s.kind === "text") {
@@ -469,6 +552,15 @@
           ? "translateX(" + (80 * (1 - p)) + "px)"
           : "translateY(" + (60 * (1 - p)) + "px)";
         s.phone(tl, s.phoneApi);
+      } else if (s.kind === "web") {
+        reveal(node, tl, [[".kicker", s.kickerAt || 0.0], [".head", s.headAt || 0.1], [".sub", s.subAt || 0.4]]);
+        var slots = node.querySelectorAll(".browser-slot, .phone-slot");
+        var pw = s.enter === false ? 1 : easeOut(tl / 0.9);
+        for (var k = 0; k < slots.length; k++) {
+          slots[k].style.opacity = pw;
+          slots[k].style.transform = "translateY(" + (60 * (1 - pw)) + "px)";
+        }
+        s.web(tl, s.device);
       } else if (s.kind === "cta") {
         var i5 = easeOut(tl / 0.8);
         var icon = node.querySelector(".cta-icon");
@@ -503,6 +595,9 @@
     Object.keys(m.frames).forEach(function (key) {
       var v = m.frames[key];
       (Array.isArray(v) ? v : [v]).forEach(function (n) { names.push(n); });
+    });
+    Object.keys(m.site || {}).forEach(function (dev) {
+      Object.keys(m.site[dev]).forEach(function (key) { names.push(m.site[dev][key].file); });
     });
     SCENES = window.defineScenes(m);
     build();
@@ -545,7 +640,30 @@ window.defineScenes = function (M) {
     { id: "i-soon", kind: "text", cls: "soon", start: 6.4, end: 9.4, headAt: 0.2, head: "Bald möglich und erhältlich." },
     { id: "i-present", kind: "text", cls: "present", start: 9.2, end: 12.6, headAt: 0.2, head: "Wir präsentieren", dots: true, dotsAt: 1.0 }
   ];
-  var T0 = 12.4;   // hier beginnt die eigentliche Werbung
+  /* ------------------------------ Webseite ------------------------------ */
+  /** Durch eine Seite scrollen: von t0 an ueber dur Sekunden bis zum Anteil frac der Seite. */
+  function tour(key, t0, dur, frac) {
+    return function (tl, dev) { dev.scroll(key, dev.maxScroll(key) * frac * easeInOut((tl - t0) / dur)); };
+  }
+  var site = [
+    { id: "w-index", kind: "web", start: 12.4, end: 21.8,
+      kicker: "Unsere Webseite", head: "Alles von <grad>JARO & DELTA.</grad>",
+      sub: "thejjbcraft.github.io/RSL - Content, Redstone Labs, Musik und Apps.", url: "thejjbcraft.github.io/RSL/",
+      web: tour("index", 1.0, 7.6, 0.62) },
+    { id: "w-labs", kind: "web", start: 21.6, end: 28.8, enter: false,
+      kicker: "Redstone Labs", head: "Tools, Mods, Plugins.",
+      sub: "Online-Tools, Mod-Labor, die RSL-Sammlung und Server - alles auf einer Seite.", url: "thejjbcraft.github.io/RSL/categories/redstone-labs/",
+      web: tour("labs", 0.6, 6.0, 0.55) },
+    { id: "w-library", kind: "web", start: 28.6, end: 34.4, enter: false,
+      kicker: "RSL Mods & Plugins", head: "Einzeln oder als Sammlung.",
+      sub: "Plugins und Mods zum Herunterladen - direkt von der Seite.", url: "thejjbcraft.github.io/RSL/categories/redstone-labs/library/",
+      web: tour("library", 0.6, 4.6, 0.45) },
+    { id: "w-store", kind: "web", start: 34.2, end: 40.0, enter: false,
+      kicker: "App Store", head: "Beide Apps zum Laden.",
+      sub: "Find Mein Soon und RSL - als APK, kostenlos.", url: "thejjbcraft.github.io/RSL/apps/store/",
+      web: tour("store", 1.0, 3.2, 1.0) }
+  ];
+  var T0 = 39.8;   // hier beginnt die eigentliche Werbung
 
   var ad = [
     /* ----------------------------- Einstieg ----------------------------- */
@@ -622,7 +740,7 @@ window.defineScenes = function (M) {
       facts: "Kostenlos · Android 7.0+ · Unter 400 KB · Keine Werbung" }
   ];
   ad.forEach(function (s) { s.start += T0; s.end += T0; });
-  return intro.concat(ad);
+  return intro.concat(site, ad);
 };
 </script>
 </body>

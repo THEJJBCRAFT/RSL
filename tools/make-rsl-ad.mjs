@@ -1,8 +1,8 @@
 /**
  * Baut den Werbeclip fuer die RSL-App als MP4.
  *
- * Ablauf: Fehlen die Aufnahmen der echten App (tools/rsl-ad/captures),
- * nimmt tools/rsl-ad/capture.mjs sie zuerst auf. Dann wird tools/rsl-ad/ad.html
+ * Ablauf: Fehlen die Aufnahmen (tools/rsl-ad/captures), nehmen
+ * tools/rsl-ad/capture.mjs (App) und capture-site.mjs (Webseite) sie zuerst auf. Dann wird tools/rsl-ad/ad.html
  * in einem Chromium geoeffnet, Bild fuer Bild ueber setTime(t) gestellt, jedes
  * Bild abfotografiert und direkt in ffmpeg geschoben. Nichts wird
  * zwischengespeichert, und weil die Zeit gesetzt und nicht gemessen wird, ist
@@ -73,8 +73,14 @@ function ensureCaptures(force) {
   const manifest = join(AD_DIR, "captures", "manifest.json");
   if (!force && existsSync(manifest)) return;
   console.log(force ? "Aufnahmen werden erneuert ..." : "Keine Aufnahmen gefunden - die App wird zuerst aufgenommen ...");
-  const run = spawnSync(process.execPath, [join(AD_DIR, "capture.mjs")], { stdio: "inherit" });
-  if (run.status !== 0 || !existsSync(manifest)) {
+  for (const script of ["capture.mjs", "capture-site.mjs"]) {
+    const run = spawnSync(process.execPath, [join(AD_DIR, script)], { stdio: "inherit" });
+    if (run.status !== 0) {
+      console.error(`Aufnahme fehlgeschlagen (${script}).`);
+      process.exit(1);
+    }
+  }
+  if (!existsSync(manifest)) {
     console.error("Aufnahme fehlgeschlagen.");
     process.exit(1);
   }
